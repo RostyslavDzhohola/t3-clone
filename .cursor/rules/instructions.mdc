@@ -7,6 +7,23 @@ alwaysApply: true
 
 This document contains the general rules and architectural overview for the T3 Chat Cloneathon project.
 
+## 0. Package Manager
+
+**CRITICAL:** This project uses **pnpm ONLY**. Never use npm or yarn.
+
+-   **Installation:** Use `pnpm install` to install dependencies
+-   **Running scripts:** Use `pnpm run dev`, `pnpm run build`, etc.
+-   **Adding packages:** Use `pnpm add <package-name>`
+-   **Dev dependencies:** Use `pnpm add -D <package-name>`
+-   **Lockfile:** Only `pnpm-lock.yaml` should exist (never `package-lock.json` or `yarn.lock`)
+
+If you encounter npm lockfiles, remove them immediately:
+```bash
+rm package-lock.json yarn.lock
+rm -rf node_modules
+pnpm install
+```
+
 ## 1. Core Architecture Principles
 
 This project uses a specific, decoupled architecture. Adhere to these roles strictly:
