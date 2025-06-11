@@ -37,6 +37,10 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ---
 
+## Coderabbit Reviews
+
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/RostyslavDzhohola/t3-clone?utm_source=oss&utm_medium=github&utm_campaign=RostyslavDzhohola%2Ft3-clone&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+
 ## 📚 Learning Lessons
 
 _This section documents every concept, pattern, and technology used in this project to create a comprehensive learning plan._
@@ -109,9 +113,32 @@ _This section documents every concept, pattern, and technology used in this proj
 
 ---
 
+#### **Lesson 4: Convex Database Debugging & Troubleshooting**
+
+**Overarching Question:** _"How do you debug Convex mutations and queries when they fail silently, and what are the common authentication and schema validation issues?"_
+
+**Concept:** Convex mutations can fail due to authentication problems, schema validation errors, or network issues. Proper logging and error handling in both client and server code is essential for debugging real-time database applications.
+
+**Key Learning Points:**
+
+- Adding comprehensive logging to Convex functions
+- Understanding Clerk JWT authentication flow with Convex
+- Debugging schema validation failures
+- Client-side vs server-side error handling
+- Using browser console and Convex dashboard for debugging
+
+**Resources:**
+
+- [Convex Error Handling Guide](https://docs.convex.dev/functions/error-handling)
+- [Convex Authentication Debugging](https://docs.convex.dev/auth/debugging)
+- [Convex Logs and Dashboard Monitoring](https://docs.convex.dev/dashboard/logs)
+- [Clerk JWT Token Debugging](https://clerk.com/docs/references/javascript/user/user-methods#debugging-tokens)
+
+---
+
 ### ⚛️ Next.js & React Patterns
 
-#### **Lesson 4: Next.js Server Actions**
+#### **Lesson 5: Next.js Server Actions**
 
 **Overarching Question:** _"How do Server Actions bridge the gap between client and server code, and when should you use them vs API routes?"_
 
@@ -131,7 +158,7 @@ _This section documents every concept, pattern, and technology used in this proj
 
 ---
 
-#### **Lesson 5: Vercel AI SDK Integration**
+#### **Lesson 6: Vercel AI SDK Integration**
 
 **Overarching Question:** _"How does the Vercel AI SDK streamline the process of building AI-powered applications with streaming responses?"_
 
@@ -153,7 +180,7 @@ _This section documents every concept, pattern, and technology used in this proj
 
 ### 🏗️ Architecture Patterns
 
-#### **Lesson 6: Decoupled Architecture Design**
+#### **Lesson 7: Decoupled Architecture Design**
 
 **Overarching Question:** _"What are the benefits of separating authentication, data storage, AI processing, and frontend concerns into distinct services?"_
 
@@ -175,7 +202,7 @@ _This section documents every concept, pattern, and technology used in this proj
 
 ### 🎯 Development Practices
 
-#### **Lesson 7: Package Manager Strategy (pnpm)**
+#### **Lesson 8: Package Manager Strategy (pnpm)**
 
 **Overarching Question:** _"What are the advantages of pnpm over npm/yarn, and how does it impact project dependency management?"_
 

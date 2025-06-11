@@ -33,10 +33,14 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useEffect, useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function ChatUI() {
   const { user } = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
   const [currentChatId, setCurrentChatId] = useState<Id<"chats"> | null>(null);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
 
   // Convex mutations and queries
   const createChat = useMutation(api.messages.createChat);
@@ -52,6 +56,17 @@ export default function ChatUI() {
     currentChatId ? { chatId: currentChatId } : "skip"
   );
 
+  // Debug logging
+  useEffect(() => {
+    console.log("🔍 Debug Info:", {
+      user: user?.id,
+      currentChatId,
+      chatsCount: chats?.length,
+      messagesCount: currentChatMessages?.length,
+      isCreatingChat,
+    });
+  }, [user, currentChatId, chats, currentChatMessages, isCreatingChat]);
+
   const {
     messages,
     input,
@@ -62,46 +77,88 @@ export default function ChatUI() {
   } = useChat({
     api: "/api/chat",
     onFinish: async (message: Message) => {
+      console.log(
+        "💬 AI message finished:",
+        message.content.slice(0, 50) + "..."
+      );
+
       // Save AI response to Convex
       if (user && currentChatId) {
         try {
-          await saveMessage({
+          console.log("💾 Saving AI message to Convex...");
+          const messageId = await saveMessage({
             chatId: currentChatId,
             userId: user.id,
             role: "assistant",
             body: message.content,
           });
+          console.log("✅ AI message saved with ID:", messageId);
         } catch (error) {
-          console.error("Failed to save AI message:", error);
+          console.error("❌ Failed to save AI message:", error);
         }
+      } else {
+        console.warn("⚠️ Cannot save AI message - missing user or chatId");
       }
     },
   });
 
   // Create a new chat
-  const handleNewChat = async () => {
-    if (!user) return;
+  const createNewChat = async () => {
+    if (!user) {
+      console.warn("⚠️ Cannot create chat - user not authenticated");
+      return null;
+    }
+
+    if (isCreatingChat) {
+      console.warn("⚠️ Already creating a chat, skipping...");
+      return null;
+    }
+
+    console.log("🆕 Creating new chat...");
+    setIsCreatingChat(true);
 
     try {
       const chatId = await createChat({
         userId: user.id,
         title: "New Chat",
       });
+
+      console.log("✅ Chat created with ID:", chatId);
       setCurrentChatId(chatId);
       setMessages([]); // Clear current messages
+
+      // Navigate to the new chat URL
+      router.push(`/chat/${chatId}`);
+
+      return chatId;
     } catch (error) {
-      console.error("Failed to create new chat:", error);
+      console.error("❌ Failed to create new chat:", error);
+      return null;
+    } finally {
+      setIsCreatingChat(false);
     }
+  };
+
+  // Handle New Chat button
+  const handleNewChat = async () => {
+    console.log("🖱️ New Chat button clicked");
+    await createNewChat();
   };
 
   // Switch to a different chat
   const handleChatSelect = (chatId: Id<"chats">) => {
+    console.log("🔄 Switching to chat:", chatId);
     setCurrentChatId(chatId);
+    router.push(`/chat/${chatId}`);
   };
 
   // Load messages when current chat changes
   useEffect(() => {
     if (currentChatMessages) {
+      console.log(
+        "📨 Loading messages for current chat:",
+        currentChatMessages.length
+      );
       const formattedMessages: Message[] = currentChatMessages.map((msg) => ({
         id: msg._id,
         role: msg.role,
@@ -114,12 +171,26 @@ export default function ChatUI() {
     }
   }, [currentChatMessages, setMessages]);
 
-  // Auto-select first chat if none selected
+  // Auto-select first chat if none selected and we're on the home page
   useEffect(() => {
-    if (chats && chats.length > 0 && !currentChatId) {
-      setCurrentChatId(chats[0]._id);
+    if (pathname === "/" && chats && chats.length > 0 && !currentChatId) {
+      const firstChat = chats[0];
+      console.log("🏠 Auto-selecting first chat:", firstChat._id);
+      setCurrentChatId(firstChat._id);
+      router.push(`/chat/${firstChat._id}`);
     }
-  }, [chats, currentChatId]);
+  }, [chats, currentChatId, pathname, router]);
+
+  // Extract chat ID from URL if we're on a chat page
+  useEffect(() => {
+    if (pathname.startsWith("/chat/")) {
+      const chatIdFromUrl = pathname.split("/chat/")[1];
+      if (chatIdFromUrl && chatIdFromUrl !== currentChatId) {
+        console.log("🔗 Setting chat ID from URL:", chatIdFromUrl);
+        setCurrentChatId(chatIdFromUrl as Id<"chats">);
+      }
+    }
+  }, [pathname, currentChatId]);
 
   // Auto-generate chat title from first user message
   const updateTitleFromFirstMessage = async (
@@ -129,43 +200,91 @@ export default function ChatUI() {
     const title =
       firstMessage.slice(0, 30) + (firstMessage.length > 30 ? "..." : "");
     try {
+      console.log("🏷️ Updating chat title to:", title);
       await updateChatTitle({
         chatId,
         title,
       });
+      console.log("✅ Chat title updated");
     } catch (error) {
-      console.error("Failed to update chat title:", error);
+      console.error("❌ Failed to update chat title:", error);
     }
   };
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    // Save user message to Convex after the message is processed by useChat
-    const currentInput = input;
-    if (user && currentChatId && currentInput.trim()) {
-      // Check if this is the first message in the chat to update title
-      const isFirstMessage = messages.length === 0;
+  // Auto-create chat when user starts typing (if no current chat)
+  const handleInputChangeWithAutoCreate = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    handleInputChange(e);
 
-      // Use setTimeout to save after the message is added to the chat
-      setTimeout(async () => {
-        try {
-          await saveMessage({
-            chatId: currentChatId,
-            userId: user.id,
-            role: "user",
-            body: currentInput,
-          });
+    // If user starts typing and there's no current chat, create one
+    if (!currentChatId && e.target.value.trim() && user && !isCreatingChat) {
+      console.log("⌨️ Auto-creating chat because user started typing");
+      const newChatId = await createNewChat();
+      if (newChatId) {
+        setCurrentChatId(newChatId);
+      }
+    }
+  };
 
-          // Update chat title if this is the first message
-          if (isFirstMessage) {
-            await updateTitleFromFirstMessage(currentChatId, currentInput);
-          }
-        } catch (error) {
-          console.error("Failed to save user message:", error);
-        }
-      }, 100);
+  // Handle form submission (both Enter key and Send button)
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    console.log("📤 Form submitted with input:", input.slice(0, 50) + "...");
+
+    // Ensure we have a chat to send the message to
+    let activeChatId = currentChatId;
+    if (!activeChatId && user) {
+      console.log("🆕 No active chat, creating one for message submission");
+      activeChatId = await createNewChat();
+      if (!activeChatId) {
+        console.error("❌ Failed to create chat for message");
+        return;
+      }
     }
 
+    // Save user message to Convex
+    const currentInput = input;
+    if (user && activeChatId && currentInput.trim()) {
+      const isFirstMessage = messages.length === 0;
+
+      try {
+        console.log("💾 Saving user message to Convex...");
+        const messageId = await saveMessage({
+          chatId: activeChatId,
+          userId: user.id,
+          role: "user",
+          body: currentInput,
+        });
+        console.log("✅ User message saved with ID:", messageId);
+
+        // Update chat title if this is the first message
+        if (isFirstMessage) {
+          await updateTitleFromFirstMessage(activeChatId, currentInput);
+        }
+      } catch (error) {
+        console.error("❌ Failed to save user message:", error);
+      }
+    }
+
+    // Submit to AI chat
     handleSubmit(e);
+  };
+
+  // Handle Enter key specifically
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      console.log("⏎ Enter key pressed, submitting form");
+      const form = e.currentTarget.closest("form");
+      if (form) {
+        const formEvent = new Event("submit", {
+          bubbles: true,
+          cancelable: true,
+        });
+        form.dispatchEvent(formEvent);
+      }
+    }
   };
 
   return (
@@ -177,11 +296,11 @@ export default function ChatUI() {
         </div>
         <Button
           onClick={handleNewChat}
-          disabled={!user}
+          disabled={!user || isCreatingChat}
           className="w-full mb-4 bg-indigo-600 hover:bg-[#4338CA] text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4 mr-2" />
-          New Chat
+          {isCreatingChat ? "Creating..." : "New Chat"}
         </Button>
 
         {/* Chat List */}
@@ -359,10 +478,11 @@ export default function ChatUI() {
               <div className="relative">
                 <Input
                   value={input}
-                  onChange={handleInputChange}
+                  onChange={handleInputChangeWithAutoCreate}
+                  onKeyDown={handleKeyDown}
                   placeholder="Type your message here..."
                   className="w-full py-6 px-4 rounded-xl border-gray-300 bg-white focus-visible:ring-indigo-500 focus-visible:ring-offset-gray-50 text-base shadow-sm"
-                  disabled={status !== "ready" || !currentChatId}
+                  disabled={status !== "ready"}
                 />
               </div>
 
@@ -405,7 +525,7 @@ export default function ChatUI() {
                   type="submit"
                   size="icon"
                   className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-[#4338CA] text-white"
-                  disabled={status !== "ready" || !currentChatId}
+                  disabled={status !== "ready"}
                 >
                   <Send className="w-5 h-5" />
                   <span className="sr-only">Send message</span>
