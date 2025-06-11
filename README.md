@@ -41,9 +41,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/RostyslavDzhohola/t3-clone?utm_source=oss&utm_medium=github&utm_campaign=RostyslavDzhohola%2Ft3-clone&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
-## 📚 Learning Lessons
-
-_This section documents every concept, pattern, and technology used in this project to create a comprehensive learning plan._
+## 📚 Learning Lessons ( for personal use )
 
 ### 🔐 Authentication & Security
 

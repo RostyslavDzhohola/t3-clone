@@ -292,9 +292,15 @@ export default function ChatUI() {
       {/* Sidebar */}
       <div className="flex flex-col w-60 border-r border-gray-200 bg-gray-50 p-4">
         <div className="flex items-center justify-between mb-4">
-          <div className="text-indigo-600 font-bold text-xl">
+          <a
+            href="https://github.com/RostyslavDzhohola/t3-clone"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 font-bold text-lg hover:text-indigo-700 transition-colors"
+            title="View T3 Chat Clone-a-thon on GitHub"
+          >
             T3 Chat Cloneathon
-          </div>
+          </a>
           <a
             href="https://github.com/RostyslavDzhohola/t3-clone"
             target="_blank"
@@ -303,7 +309,7 @@ export default function ChatUI() {
             title="View on GitHub"
           >
             <svg
-              className="w-5 h-5"
+              className="w-6 h-6"
               fill="currentColor"
               viewBox="0 0 24 24"
               aria-hidden="true"
