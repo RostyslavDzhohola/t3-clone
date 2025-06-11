@@ -18,25 +18,25 @@ _Goal: Connect all services and deploy a live, authenticated skeleton app._
 
 ### Project & Auth Setup
 
-- [ ] Initialize a new Next.js project using the App Router: `npx create-next-app@latest`.
-- [ ] Set up a new GitHub repository and push the initial code.
-- [ ] Add a `LICENSE` file (e.g., `MIT`).
-- [ ] Create a Clerk account and a new application. Configure it for **Google sign-in only**.
-- [ ] Install Clerk's Next.js SDK: `npm install @clerk/nextjs`.
-- [ ] Wrap `app/layout.tsx` with the `<ClerkProvider>`.
-- [ ] Add Clerk keys (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) to `.env.local`.
+- ✅ Initialize a new Next.js project using the App Router: `npx create-next-app@latest`.
+- ✅ Set up a new GitHub repository and push the initial code.
+- ✅ Add a `LICENSE` file (e.g., `MIT`).
+- ✅ Create a Clerk account and a new application. Configure it for **Google sign-in only**.
+- ✅ Install Clerk's Next.js SDK: `npm install @clerk/nextjs`.
+- ✅ Wrap `app/layout.tsx` with the `<ClerkProvider>`.
+- ✅ Add Clerk keys (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) to `.env.local`.
 
 ### Convex Database Integration
 
-- [ ] Initialize Convex in your project: `npx convex init`.
-- [ ] **Crucial Step:** In the Convex dashboard (Settings -> Auth), configure Clerk as a JWT provider using the **JWKS endpoint URL** from your Clerk dashboard.
-- [ ] Define the database schema in `convex/schema.ts`. Create a `messages` table with fields: `userId: string`, `role: "user" | "assistant"`, and `body: string`.
+- ✅ Initialize Convex in your project: `npx convex init`.
+- ✅ **Crucial Step:** In the Convex dashboard (Settings -> Auth), configure Clerk as a JWT provider using the **JWKS endpoint URL** from your Clerk dashboard.
+- ✅ Define the database schema in `convex/schema.ts`. Create a `messages` table with fields: `userId: string`, `role: "user" | "assistant"`, and `body: string`.
 
 ### Vercel Deployment
 
-- [ ] Connect your GitHub repository to Vercel.
-- [ ] Add all environment variables (Clerk, Convex, OpenRouter) to the Vercel project settings.
-- [ ] Deploy the initial skeleton app to get a live URL.
+- ✅ Connect your GitHub repository to Vercel.
+- ✅ Add all environment variables (Clerk, Convex, OpenRouter) to the Vercel project settings.
+- ✅ Deploy the initial skeleton app to get a live URL.
 
 ---
 
@@ -46,23 +46,24 @@ _Goal: Implement the main chat functionality using Next.js Server Actions._
 
 ### Create the Server Action
 
-- [ ] Install the Vercel AI SDK and OpenAI SDK: `npm install ai openai`.
-- [ ] Create a new file for backend logic: `app/actions.ts`.
-- [ ] Create an `async` Server Action inside `app/actions.ts`.
-- [ ] Use the Vercel AI SDK's `streamText` function inside the action.
-- [ ] Configure `streamText` with an OpenAI provider pointing to OpenRouter's `baseURL` (`https://openrouter.ai/api/v1`) and using your `OPENROUTER_API_KEY`.
+- ✅ Install the Vercel AI SDK and OpenAI SDK: `npm install ai openai`.
+- ✅ Create backend logic: `app/api/chat/route.ts` (chose API route instead of Server Action).
+- ✅ Create an `async` handler inside the API route.
+- ✅ Use the Vercel AI SDK's `streamText` function inside the action.
+- ✅ Configure `streamText` with OpenRouter provider and `OPENROUTER_API_KEY`.
 
 ### Frontend Chat UI (`useChat`)
 
-- [ ] In your main chat component, import the Server Action from `app/actions.ts`.
-- [ ] Use the `useChat` hook from `ai/react`, passing your Server Action to it: `useChat({ action: yourServerAction })`.
-- [ ] Build the UI to map over the `messages` array and a form bound to the `useChat` helpers.
+- ✅ In your main chat component, use the API route instead of Server Action.
+- ✅ Use the `useChat` hook from `ai/react`, pointing to `/api/chat`: `useChat({ api: "/api/chat" })`.
+- ✅ Build the UI to map over the `messages` array and a form bound to the `useChat` helpers.
 
 ### Persisting Messages to Convex
 
-- [ ] Create a Convex mutation in `convex/messages.ts` named `saveMessage`. It should take `role` and `body` and save them to the database.
-- [ ] When the user submits the form, call `saveMessage` to save the user's prompt.
-- [ ] Use the `onFinish` callback from `useChat` to call `saveMessage` again to save the AI's complete response.
+- ✅ Create a Convex mutation in `convex/messages.ts` named `saveMessage`. It should take `role` and `body` and save them to the database.
+- ✅ When the user submits the form, call `saveMessage` to save the user's prompt.
+- ✅ Use the `onFinish` callback from `useChat` to call `saveMessage` again to save the AI's complete response.
+- ✅ Load existing messages on component mount to restore chat history.
 
 ---
 

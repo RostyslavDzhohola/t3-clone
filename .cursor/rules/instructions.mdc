@@ -64,3 +64,20 @@ Saving messages to the Convex database is a strict two-step process:
 -   **Database Schema:** `convex/schema.ts`
 -   **Database Functions:** `convex/messages.ts`
 -   **Main UI Component:** `src/components/ChatUI.tsx`
+
+## 6. Learning System Protocol
+
+**IMPORTANT:** Only add learning lessons to README.md when the user explicitly requests it with commands like:
+- "I want to learn about [concept]"
+- "Save this concept for later review"
+- "Add this to learning lessons"
+- "Help me understand [concept]"
+
+**Never automatically add lessons.** Wait for explicit user instruction.
+
+When adding lessons to README.md:
+1. Add under the "📚 Learning Lessons" section
+2. Use the lesson template format
+3. **CRITICAL:** Use only targeted, specific resources - never general documentation links
+4. Focus on the exact concept the user wants to learn
+5. Resources must be specific tutorials, guides, or targeted documentation pages
