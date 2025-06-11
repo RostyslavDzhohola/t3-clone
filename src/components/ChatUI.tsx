@@ -15,12 +15,18 @@ import {
   Send,
   ChevronDown,
   Moon,
-  ArrowUp,
 } from "lucide-react"
-import { useChat } from "ai/react"
+import { useChat, type Message } from "@ai-sdk/react"
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 
 export default function ChatUI() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat()
+  const { messages, input, handleInputChange, handleSubmit, status } = useChat({
+    api: "/api/chat",
+    onFinish: async (message: Message) => {
+      // This is where we can save messages to Convex if needed
+      console.log("Message finished:", message);
+    },
+  })
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     handleSubmit(e)
@@ -30,7 +36,7 @@ export default function ChatUI() {
     <div className="flex h-screen w-full bg-gray-50">
       {/* Sidebar */}
       <div className="flex flex-col w-60 border-r border-gray-200 bg-gray-50 p-4">
-        <div className="text-indigo-600 font-bold text-xl mb-4">T3.chat</div>
+        <div className="text-indigo-600 font-bold text-xl mb-4">T3 clone hackathon</div>
         <Button className="w-full mb-4 bg-indigo-600 hover:bg-[#4338CA] text-white font-semibold py-2 px-4 rounded-lg">
           <Plus className="w-4 h-4 mr-2" />
           New Chat
@@ -40,13 +46,23 @@ export default function ChatUI() {
           <Input placeholder="Search your threads..." className="pl-9 pr-3 py-2 rounded-lg bg-white border-gray-300" />
         </div>
         <div className="mt-auto">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-indigo-600 hover:bg-gray-100 px-3 py-2 rounded-lg"
-          >
-            <span className="mr-2">→</span>
-            Login
-          </Button>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-indigo-600 hover:bg-gray-100 px-3 py-2 rounded-lg"
+              >
+                <span className="mr-2">→</span>
+                Login
+              </Button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
+              <UserButton afterSignOutUrl="/" />
+              <span className="text-sm text-gray-700">Profile</span>
+            </div>
+          </SignedIn>
         </div>
       </div>
 
@@ -124,7 +140,7 @@ export default function ChatUI() {
             </div>
           ) : (
             <div className="space-y-4 max-w-3xl mx-auto pt-8">
-              {messages.map((m) => (
+              {messages.map((m: Message) => (
                 <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[70%] p-3 rounded-lg ${
@@ -135,7 +151,7 @@ export default function ChatUI() {
                   </div>
                 </div>
               ))}
-              {isLoading && (
+              {(status === 'submitted' || status === 'streaming') && (
                 <div className="flex justify-start">
                   <div className="max-w-[70%] p-3 rounded-lg bg-white text-gray-800">AI is typing...</div>
                 </div>
@@ -144,48 +160,28 @@ export default function ChatUI() {
           )}
         </div>
 
-        {/* Terms and Privacy */}
-        <div className="absolute bottom-24 w-full text-center text-sm text-gray-500">
-          Make sure you agree to our{" "}
-          <a href="#" className="text-indigo-600 hover:underline">
-            Terms
-          </a>{" "}
-          and our{" "}
-          <a href="#" className="text-indigo-600 hover:underline">
-            Privacy Policy
-          </a>
-        </div>
-
         {/* Message Input Area */}
         <div className="absolute bottom-0 w-full p-4 flex justify-center">
-          <form onSubmit={onSubmit} className="w-full max-w-3xl relative">
+          <form onSubmit={onSubmit} className="w-full max-w-3xl space-y-3">
+            {/* Input field */}
             <div className="relative">
               <Input
                 value={input}
                 onChange={handleInputChange}
                 placeholder="Type your message here..."
-                className="w-full pr-16 py-6 rounded-xl border-gray-300 bg-white focus-visible:ring-indigo-500 focus-visible:ring-offset-gray-50 text-base shadow-sm"
-                disabled={isLoading}
+                className="w-full py-6 px-4 rounded-xl border-gray-300 bg-white focus-visible:ring-indigo-500 focus-visible:ring-offset-gray-50 text-base shadow-sm"
+                disabled={status !== 'ready'}
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-[#4338CA] text-white"
-                  disabled={isLoading}
-                >
-                  <Send className="w-5 h-5" />
-                  <span className="sr-only">Send message</span>
-                </Button>
-              </div>
             </div>
-            <div className="flex items-center justify-between p-3 mt-2">
-              <div className="flex items-center space-x-4 text-sm">
+            
+            {/* Controls row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="flex items-center gap-1 text-gray-700 hover:bg-gray-100 px-3 py-1 rounded-md"
+                      className="flex items-center gap-1 text-gray-700 hover:bg-gray-100 px-3 py-1 rounded-md text-sm"
                     >
                       Gemini 2.5 Flash
                       <ChevronDown className="w-3 h-3" />
@@ -193,8 +189,7 @@ export default function ChatUI() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     <DropdownMenuItem>Gemini 2.5 Flash</DropdownMenuItem>
-                    <DropdownMenuItem>GPT-4o</DropdownMenuItem>
-                    <DropdownMenuItem>Claude 3 Opus</DropdownMenuItem>
+
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button
@@ -204,22 +199,24 @@ export default function ChatUI() {
                   <Search className="w-4 h-4" />
                   Search
                 </Button>
-              </div>
-              <div className="flex items-center space-x-4 text-sm">
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-1 text-gray-700 hover:bg-gray-100 px-3 py-1 rounded-md"
+                  className="flex items-center gap-1 text-gray-700 hover:bg-gray-100 px-3 py-1 rounded-md text-sm"
                 >
                   <Paperclip className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-8 h-8 rounded-full bg-gray-100 text-indigo-600 hover:bg-gray-200"
-                >
-                  <ArrowUp className="w-4 h-4" />
+                  Attach
                 </Button>
               </div>
+              
+              <Button
+                type="submit"
+                size="icon"
+                className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-[#4338CA] text-white"
+                disabled={status !== 'ready'}
+              >
+                <Send className="w-5 h-5" />
+                <span className="sr-only">Send message</span>
+              </Button>
             </div>
           </form>
         </div>
