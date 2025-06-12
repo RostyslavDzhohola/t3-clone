@@ -217,3 +217,26 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 - [Why pnpm? Package Manager Comparison](https://pnpm.io/motivation)
 - [pnpm vs npm vs yarn Performance Guide](https://pnpm.io/benchmarks)
+
+---
+
+#### **Lesson 9: Next.js Proxies for Analytics & Adblocker Bypass**
+
+**Overarching Question:** _"How do Next.js rewrites enable proxying third-party scripts through your own domain, and why is this crucial for analytics accuracy?"_
+
+**Concept:** Next.js rewrites allow you to transparently proxy external resources through your own domain, making requests appear to originate from your site. This bypasses adblockers that block third-party analytics domains and improves tracking accuracy.
+
+**Key Learning Points:**
+
+- How Next.js rewrites work under the hood
+- The difference between redirects, rewrites, and proxies
+- Why adblockers target third-party analytics domains
+- Performance implications of proxying external resources
+- Security considerations when proxying third-party content
+
+**Resources:**
+
+- [Next.js Rewrites Documentation](https://nextjs.org/docs/app/api-reference/next-config-js/rewrites)
+- [DataFast Next.js Proxy Implementation](https://datafa.st/docs/nextjs-proxy)
+- [Plausible Analytics Proxy Guide](https://plausible.io/docs/proxy/introduction)
+- [Vercel Edge Network and Rewrites](https://vercel.com/docs/edge-network/rewrites)
