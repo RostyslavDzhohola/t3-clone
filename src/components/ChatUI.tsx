@@ -3,15 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Search,
-  Plus,
-  MessageSquare,
-  Code,
-  BookOpen,
-  Lightbulb,
-  Moon,
-} from "lucide-react";
+import { Search, MessageSquare, Code, BookOpen, Lightbulb } from "lucide-react";
 import { useChat, type Message } from "@ai-sdk/react";
 import {
   SignInButton,
@@ -30,6 +22,9 @@ import remarkGfm from "remark-gfm";
 import MessageInput from "./MessageInput";
 import { useMessageInput } from "../hooks";
 import { toast } from "sonner";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 export default function ChatUI() {
   const { user } = useUser();
@@ -237,7 +232,7 @@ export default function ChatUI() {
             href="https://github.com/RostyslavDzhohola/t3-clone"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-indigo-600 font-bold text-lg hover:text-indigo-700 transition-colors"
+            className="text-gray-700 font-bold text-lg hover:text-gray-800 transition-colors"
             title="View T3 Chat Cloneathon on GitHub"
           >
             T3.1 Chat clone
@@ -246,7 +241,7 @@ export default function ChatUI() {
             href="https://github.com/RostyslavDzhohola/t3-clone"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-600 hover:text-indigo-600 transition-colors"
+            className="text-gray-600 hover:text-gray-700 transition-colors"
             title="View on GitHub"
           >
             <svg
@@ -266,9 +261,8 @@ export default function ChatUI() {
         <Button
           onClick={handleNewChat}
           disabled={!user || isCreatingChat}
-          className="w-full mb-4 bg-indigo-600 hover:bg-[#4338CA] text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full mb-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Plus className="w-4 h-4 mr-2" />
           {isCreatingChat ? "Creating..." : "New Chat"}
         </Button>
 
@@ -281,7 +275,7 @@ export default function ChatUI() {
               onClick={() => handleChatSelect(chat._id)}
               className={`w-full justify-start text-left p-3 rounded-lg truncate ${
                 currentChatId === chat._id
-                  ? "bg-indigo-100 text-indigo-700"
+                  ? "bg-gray-200 text-gray-800"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -304,7 +298,7 @@ export default function ChatUI() {
             <SignInButton mode="modal">
               <Button
                 variant="ghost"
-                className="w-full justify-start text-indigo-600 hover:bg-gray-100 px-3 py-2 rounded-lg"
+                className="w-full justify-start text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-lg"
               >
                 <span className="mr-2">→</span>
                 Login
@@ -323,289 +317,300 @@ export default function ChatUI() {
       {/* Main Content */}
       <div className="flex flex-col flex-1 relative">
         {/* Chat Content */}
-        <div className="flex-1 overflow-y-auto px-4 pb-32">
-          {!user ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <h1 className="text-3xl font-bold mb-8 text-gray-700">
-                Welcome!
-              </h1>
-              <p className="text-gray-600 mb-8">
-                Please sign in to start chatting
-              </p>
-              <SignInButton mode="modal">
-                <Button className="bg-indigo-600 hover:bg-[#4338CA] text-white">
-                  Sign In
-                </Button>
-              </SignInButton>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <h1 className="text-3xl font-bold mb-8 text-gray-700">
-                How can I help you?
-              </h1>
-              <div className="flex flex-wrap justify-center gap-3 mb-12">
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 px-6 py-2 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
-                >
-                  <Lightbulb className="w-4 h-4" />
-                  Create
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 px-6 py-2 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  Explore
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 px-6 py-2 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
-                >
-                  <Code className="w-4 h-4" />
-                  Code
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 px-6 py-2 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Learn
-                </Button>
+        <div className="flex-1 overflow-y-auto pb-32">
+          <div className="w-full max-w-3xl mx-auto px-4">
+            {!user ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <h1 className="text-3xl font-bold mb-8 text-gray-700">
+                  Welcome!
+                </h1>
+                <p className="text-gray-600 mb-8">
+                  Please sign in to start chatting
+                </p>
+                <SignInButton mode="modal">
+                  <Button className="bg-gray-600 hover:bg-gray-700 text-white">
+                    Sign In
+                  </Button>
+                </SignInButton>
               </div>
-              <div className="grid gap-3 w-full max-w-xl">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
-                >
-                  How does AI work?
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
-                >
-                  Are black holes real?
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
-                >
-                  How many Rs are in the word &quot;strawberry&quot;?
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
-                >
-                  What is the meaning of life?
-                </Button>
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <h1 className="text-3xl font-bold mb-8 text-gray-700">
+                  How can I help you?
+                </h1>
+                <div className="flex flex-wrap justify-center gap-3 mb-12">
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 px-6 py-2 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                  >
+                    <Lightbulb className="w-4 h-4" />
+                    Create
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 px-6 py-2 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    Explore
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 px-6 py-2 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                  >
+                    <Code className="w-4 h-4" />
+                    Code
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 px-6 py-2 rounded-full border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Learn
+                  </Button>
+                </div>
+                <div className="grid gap-3 w-full max-w-xl">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
+                  >
+                    How does AI work?
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
+                  >
+                    Are black holes real?
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
+                  >
+                    How many Rs are in the word &quot;strawberry&quot;?
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
+                  >
+                    What is the meaning of life?
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-8 max-w-4xl mx-auto pt-6 pb-8">
-              {messages.map((m: Message) => (
-                <div key={m.id} className="w-full">
-                  {m.role === "user" ? (
-                    <div className="flex justify-end mb-6">
-                      <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-indigo-600 text-white text-sm leading-relaxed">
-                        {m.content}
+            ) : (
+              <div className="space-y-8 pt-6 pb-8">
+                {messages.map((m: Message) => (
+                  <div key={m.id} className="w-full">
+                    {m.role === "user" ? (
+                      <div className="flex justify-end mb-6">
+                        <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-gray-600 text-white text-sm leading-relaxed">
+                          {m.content}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="w-full mb-6">
-                      <div className="prose prose-gray max-w-none text-sm leading-relaxed prose-headings:text-gray-900 prose-headings:font-semibold prose-h1:text-lg prose-h1:mb-4 prose-h2:text-base prose-h2:mb-3 prose-h3:text-sm prose-h3:mb-2 prose-p:text-gray-800 prose-p:mb-4 prose-p:leading-relaxed prose-strong:text-gray-900 prose-strong:font-semibold prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-xs prose-code:font-mono prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200 prose-pre:rounded-lg prose-pre:p-0 prose-pre:mb-4 prose-blockquote:border-l-gray-300 prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-ul:mb-4 prose-ul:space-y-1 prose-ol:mb-4 prose-ol:space-y-1 prose-li:text-gray-800 prose-li:leading-relaxed prose-li:mb-1">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            p: ({ children }) => (
-                              <p className="text-sm text-gray-800 leading-relaxed mb-4">
-                                {children}
-                              </p>
-                            ),
-                            h1: ({ children }) => (
-                              <h1 className="text-lg font-semibold text-gray-900 mb-4 mt-6">
-                                {children}
-                              </h1>
-                            ),
-                            h2: ({ children }) => (
-                              <h2 className="text-base font-semibold text-gray-900 mb-3 mt-5">
-                                {children}
-                              </h2>
-                            ),
-                            h3: ({ children }) => (
-                              <h3 className="text-sm font-semibold text-gray-900 mb-2 mt-4">
-                                {children}
-                              </h3>
-                            ),
-                            ul: ({ children }) => (
-                              <ul className="list-disc pl-6 mb-4 space-y-2">
-                                {children}
-                              </ul>
-                            ),
-                            ol: ({ children }) => (
-                              <ol className="list-decimal pl-6 mb-4 space-y-2">
-                                {children}
-                              </ol>
-                            ),
-                            li: ({ children }) => (
-                              <li className="text-sm text-gray-800 leading-relaxed">
-                                {children}
-                              </li>
-                            ),
-                            blockquote: ({ children }) => (
-                              <blockquote className="border-l-4 border-l-gray-300 pl-4 italic text-gray-700 mb-4">
-                                {children}
-                              </blockquote>
-                            ),
-                            strong: ({ children }) => (
-                              <strong className="font-semibold text-gray-900">
-                                {children}
-                              </strong>
-                            ),
-                            code: (props: React.ComponentProps<"code">) => {
-                              const { className, children, ...rest } = props;
-                              const isInline =
-                                !className || !className.includes("language-");
+                    ) : (
+                      <div className="w-full mb-6">
+                        <div className="prose prose-gray max-w-none text-sm leading-relaxed prose-headings:text-gray-900 prose-headings:font-semibold prose-h1:text-lg prose-h1:mb-4 prose-h2:text-base prose-h2:mb-3 prose-h3:text-sm prose-h3:mb-2 prose-p:text-gray-800 prose-p:mb-4 prose-p:leading-relaxed prose-strong:text-gray-900 prose-strong:font-semibold prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-xs prose-code:font-mono prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200 prose-pre:rounded-lg prose-pre:p-0 prose-pre:mb-4 prose-blockquote:border-l-gray-300 prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-ul:mb-4 prose-ul:space-y-1 prose-ol:mb-4 prose-ol:space-y-1 prose-li:text-gray-800 prose-li:leading-relaxed prose-li:mb-1">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ children }) => (
+                                <p className="text-sm text-gray-800 leading-relaxed mb-4">
+                                  {children}
+                                </p>
+                              ),
+                              h1: ({ children }) => (
+                                <h1 className="text-lg font-semibold text-gray-900 mb-4 mt-6">
+                                  {children}
+                                </h1>
+                              ),
+                              h2: ({ children }) => (
+                                <h2 className="text-base font-semibold text-gray-900 mb-3 mt-5">
+                                  {children}
+                                </h2>
+                              ),
+                              h3: ({ children }) => (
+                                <h3 className="text-sm font-semibold text-gray-900 mb-2 mt-4">
+                                  {children}
+                                </h3>
+                              ),
+                              ul: ({ children }) => (
+                                <ul className="list-disc pl-6 mb-4 space-y-2">
+                                  {children}
+                                </ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="list-decimal pl-6 mb-4 space-y-2">
+                                  {children}
+                                </ol>
+                              ),
+                              li: ({ children }) => (
+                                <li className="text-sm text-gray-800 leading-relaxed">
+                                  {children}
+                                </li>
+                              ),
+                              blockquote: ({ children }) => (
+                                <blockquote className="border-l-4 border-l-gray-300 pl-4 italic text-gray-700 mb-4">
+                                  {children}
+                                </blockquote>
+                              ),
+                              strong: ({ children }) => (
+                                <strong className="font-semibold text-gray-900">
+                                  {children}
+                                </strong>
+                              ),
+                              code: (props: React.ComponentProps<"code">) => {
+                                const { className, children, ...rest } = props;
+                                const isInline =
+                                  !className ||
+                                  !className.includes("language-");
 
-                              if (isInline) {
-                                return (
-                                  <code
-                                    className="bg-gray-100 px-2 py-1 rounded text-xs font-mono text-gray-800"
-                                    {...rest}
-                                  >
-                                    {children}
-                                  </code>
-                                );
-                              }
-
-                              // Extract language from className (e.g., "language-typescript" -> "typescript")
-                              const language =
-                                className?.replace("language-", "") || "text";
-                              const codeContent = String(children).replace(
-                                /\n$/,
-                                ""
-                              );
-                              const [copied, setCopied] = React.useState(false);
-
-                              const handleCopy = async () => {
-                                try {
-                                  await navigator.clipboard.writeText(
-                                    codeContent
-                                  );
-                                  setCopied(true);
-
-                                  // Show toast notification
-                                  toast.success("Copied to clipboard!", {
-                                    duration: 2000,
-                                  });
-
-                                  // Reset the copied state after animation
-                                  setTimeout(() => setCopied(false), 2000);
-                                } catch (err) {
-                                  console.error("Failed to copy code:", err);
-                                  toast.error(
-                                    "Failed to copy code to clipboard"
-                                  );
-                                }
-                              };
-
-                              return (
-                                <div className="bg-gray-50 border border-gray-200 rounded-lg mb-4 overflow-hidden">
-                                  {/* Language header with copy button */}
-                                  <div className="bg-gray-100 border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-                                    <span className="text-xs font-medium text-gray-600 lowercase">
-                                      {language}
-                                    </span>
-                                    <button
-                                      onClick={handleCopy}
-                                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
-                                      title="Copy code"
-                                    >
-                                      {copied ? (
-                                        // Checkmark icon for copied state
-                                        <svg
-                                          className="w-3.5 h-3.5 text-green-600 animate-pulse"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                          />
-                                        </svg>
-                                      ) : (
-                                        // Clipboard icon for default state
-                                        <svg
-                                          className="w-3.5 h-3.5"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                          />
-                                        </svg>
-                                      )}
-                                      <span
-                                        className={
-                                          copied ? "text-green-600" : ""
-                                        }
-                                      >
-                                        {copied ? "Copied!" : "Copy"}
-                                      </span>
-                                    </button>
-                                  </div>
-                                  {/* Code content */}
-                                  <pre className="p-4 overflow-x-auto">
+                                if (isInline) {
+                                  return (
                                     <code
-                                      className={`${className} text-xs font-mono leading-relaxed text-gray-800`}
+                                      className="bg-gray-100 px-2 py-1 rounded text-xs font-mono text-gray-800"
                                       {...rest}
                                     >
                                       {children}
                                     </code>
-                                  </pre>
-                                </div>
-                              );
-                            },
-                          }}
-                        >
-                          {m.content}
-                        </ReactMarkdown>
+                                  );
+                                }
+
+                                // Extract language from className (e.g., "language-typescript" -> "typescript")
+                                const language =
+                                  className?.replace("language-", "") || "text";
+                                const codeContent = String(children).replace(
+                                  /\n$/,
+                                  ""
+                                );
+                                const [copied, setCopied] =
+                                  React.useState(false);
+
+                                const handleCopy = async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(
+                                      codeContent
+                                    );
+                                    setCopied(true);
+
+                                    // Show toast notification
+                                    toast.success("Copied to clipboard!", {
+                                      duration: 2000,
+                                    });
+
+                                    // Reset the copied state after animation
+                                    setTimeout(() => setCopied(false), 2000);
+                                  } catch (err) {
+                                    console.error("Failed to copy code:", err);
+                                    toast.error(
+                                      "Failed to copy code to clipboard"
+                                    );
+                                  }
+                                };
+
+                                return (
+                                  <div className="border border-gray-200 rounded-lg mb-4 overflow-hidden shadow-md w-full">
+                                    {/* Language header with copy button */}
+                                    <div className="bg-gray-100 border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+                                      <span className="text-xs font-medium text-gray-600 lowercase">
+                                        {language}
+                                      </span>
+                                      <button
+                                        onClick={handleCopy}
+                                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+                                        title="Copy code"
+                                      >
+                                        {copied ? (
+                                          // Checkmark icon for copied state
+                                          <svg
+                                            className="w-3.5 h-3.5 text-green-600 animate-pulse"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M5 13l4 4L19 7"
+                                            />
+                                          </svg>
+                                        ) : (
+                                          // Clipboard icon for default state
+                                          <svg
+                                            className="w-3.5 h-3.5"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                            />
+                                          </svg>
+                                        )}
+                                        <span
+                                          className={
+                                            copied ? "text-green-600" : ""
+                                          }
+                                        >
+                                          {copied ? "Copied!" : "Copy"}
+                                        </span>
+                                      </button>
+                                    </div>
+                                    {/* Code content with syntax highlighting */}
+                                    <SyntaxHighlighter
+                                      language={language}
+                                      style={oneLight}
+                                      customStyle={{
+                                        margin: 0,
+                                        padding: "16px",
+                                        backgroundColor: "#f8f9fa",
+                                        fontSize: "12px",
+                                        lineHeight: "1.5",
+                                        width: "100%",
+                                      }}
+                                      wrapLongLines={true}
+                                    >
+                                      {codeContent}
+                                    </SyntaxHighlighter>
+                                  </div>
+                                );
+                              },
+                            }}
+                          >
+                            {m.content}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {(status === "submitted" || status === "streaming") && (
+                  <div className="w-full mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"></div>
+                        <div
+                          className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"
+                          style={{ animationDelay: "0.1s" }}
+                        ></div>
+                        <div
+                          className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"
+                          style={{ animationDelay: "0.2s" }}
+                        ></div>
                       </div>
                     </div>
-                  )}
-                </div>
-              ))}
-              {(status === "submitted" || status === "streaming") && (
-                <div className="w-full mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"></div>
-                      <div
-                        className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"
-                        style={{ animationDelay: "0.1s" }}
-                      ></div>
-                      <div
-                        className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"
-                        style={{ animationDelay: "0.2s" }}
-                      ></div>
-                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Message Input Area */}
         {user && (
           <div className="absolute bottom-0 w-full">
-            <div className="w-full max-w-3xl mx-auto px-4 pt-4">
+            <div className="w-full max-w-3xl mx-auto ">
               <MessageInput
                 input={input}
                 onInputChange={enhancedInputChange}

@@ -42,7 +42,7 @@ export default function MessageInput({
     <div className="w-full">
       <form onSubmit={onSubmit} className="relative">
         {/* Main Input Container */}
-        <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-2xl shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent focus-within:border-b-0">
+        <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-2xl shadow-sm focus-within:ring-2 focus-within:ring-gray-400 focus-within:border-transparent focus-within:border-b-0">
           {/* Text Input */}
           <textarea
             value={input}
@@ -120,7 +120,7 @@ export default function MessageInput({
               type="submit"
               size="sm"
               disabled={disabled || !input.trim()}
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-600 hover:bg-gray-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
               <Send className="w-3.5 h-3.5" />
               <span className="sr-only">Send message</span>
