@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +12,8 @@ import { Search, Paperclip, Send, ChevronDown } from "lucide-react";
 
 interface MessageInputProps {
   input: string;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   disabled?: boolean;
   placeholder?: string;
@@ -28,34 +27,56 @@ export default function MessageInput({
   disabled = false,
   placeholder = "Type your message here...",
 }: MessageInputProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // If Enter is pressed without Shift, submit the form
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!disabled && input.trim()) {
+        onSubmit(e as any);
+      }
+    }
+    // Call the original onKeyDown handler
+    onKeyDown(e);
+  };
   return (
     <div className="w-full">
       <form onSubmit={onSubmit} className="relative">
         {/* Main Input Container */}
         <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-2xl shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent focus-within:border-b-0">
           {/* Text Input */}
-          <Input
+          <textarea
             value={input}
             onChange={onInputChange}
-            onKeyDown={onKeyDown}
+            onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className="w-full px-4 py-6 text-base bg-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none placeholder:text-gray-500"
+            rows={1}
+            className="w-full px-4 pt-3 pb-2 text-sm bg-transparent border-none outline-none resize-none placeholder:text-gray-400 placeholder:text-sm focus:outline-none min-h-[1.5rem] max-h-32 overflow-y-auto"
+            style={{
+              height: "auto",
+              minHeight: "1.5rem",
+            }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = "auto";
+              target.style.height = `${Math.min(target.scrollHeight, 128)}px`;
+            }}
           />
 
           {/* Bottom Controls Bar */}
-          <div className="flex items-center justify-between px-4 pb-4">
+          <div className="flex items-center justify-between px-4 pb-3 pt-3">
             {/* Left Side Controls */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               {/* Model Selection */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-3 py-1.5 rounded-lg font-medium"
+                    size="sm"
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-2 py-1 rounded-md font-medium h-7"
                   >
                     Gemini 2.5 Flash
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-3 h-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-48">
@@ -75,9 +96,9 @@ export default function MessageInput({
                 variant="ghost"
                 size="sm"
                 disabled
-                className="flex items-center gap-2 text-sm text-gray-400 cursor-not-allowed px-3 py-1.5 rounded-lg"
+                className="flex items-center gap-1.5 text-xs text-gray-400 cursor-not-allowed px-2 py-1 rounded-md h-7"
               >
-                <Search className="w-4 h-4" />
+                <Search className="w-3 h-3" />
                 Search
               </Button>
 
@@ -87,9 +108,9 @@ export default function MessageInput({
                 variant="ghost"
                 size="sm"
                 disabled
-                className="flex items-center gap-2 text-sm text-gray-400 cursor-not-allowed px-3 py-1.5 rounded-lg"
+                className="flex items-center gap-1.5 text-xs text-gray-400 cursor-not-allowed px-2 py-1 rounded-md h-7"
               >
-                <Paperclip className="w-4 h-4" />
+                <Paperclip className="w-3 h-3" />
                 Attach
               </Button>
             </div>
@@ -99,9 +120,9 @@ export default function MessageInput({
               type="submit"
               size="sm"
               disabled={disabled || !input.trim()}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
               <span className="sr-only">Send message</span>
             </Button>
           </div>
