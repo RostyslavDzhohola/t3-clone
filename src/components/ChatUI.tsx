@@ -458,15 +458,17 @@ export default function ChatUI() {
 
         {/* Message Input Area */}
         {user && (
-          <div className="absolute bottom-0 w-full p-4 flex justify-center bg-gray-50">
-            <MessageInput
-              input={input}
-              onInputChange={enhancedInputChange}
-              onKeyDown={handleKeyDown}
-              onSubmit={enhancedSubmit}
-              disabled={status !== "ready"}
-              placeholder="Type your message here..."
-            />
+          <div className="absolute bottom-0 w-full bg-gray-50">
+            <div className="w-full max-w-3xl mx-auto px-4 pt-4">
+              <MessageInput
+                input={input}
+                onInputChange={enhancedInputChange}
+                onKeyDown={handleKeyDown}
+                onSubmit={enhancedSubmit}
+                disabled={status !== "ready"}
+                placeholder="Type your message here..."
+              />
+            </div>
           </div>
         )}
       </div>

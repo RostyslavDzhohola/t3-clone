@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "./ConvexClientProvider";
@@ -20,6 +21,14 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
+        <head>
+          <Script
+            data-website-id="684a2754569da665c6b838ca"
+            data-domain="t3-clone-hackathon.vercel.app"
+            src="https://datafa.st/js/script.js"
+            strategy="afterInteractive"
+          />
+        </head>
         <body className={inter.className}>
           <ConvexClientProvider>{children}</ConvexClientProvider>
         </body>

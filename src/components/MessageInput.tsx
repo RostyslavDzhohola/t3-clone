@@ -29,10 +29,10 @@ export default function MessageInput({
   placeholder = "Type your message here...",
 }: MessageInputProps) {
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full">
       <form onSubmit={onSubmit} className="relative">
         {/* Main Input Container */}
-        <div className="relative bg-white rounded-2xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent">
+        <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-2xl shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent focus-within:border-b-0">
           {/* Text Input */}
           <Input
             value={input}
