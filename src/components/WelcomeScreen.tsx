@@ -21,7 +21,7 @@ export default function WelcomeScreen({
         <h1 className="text-3xl font-bold mb-8 text-gray-700">Welcome!</h1>
         <p className="text-gray-600 mb-8">Please sign in to start chatting</p>
         <SignInButton mode="modal">
-          <Button className="bg-gray-600 hover:bg-gray-700 text-white">
+          <Button className="bg-gray-400 hover:bg-gray-500 text-white">
             Sign In
           </Button>
         </SignInButton>

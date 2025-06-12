@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, MessageSquare } from "lucide-react";
+import { Search } from "lucide-react";
 import type { useUser } from "@clerk/nextjs"; // type-only
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Id } from "../../convex/_generated/dataModel";
@@ -30,6 +30,16 @@ export default function Sidebar({
   onNewChat,
   onChatSelect,
 }: SidebarProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Filter chats based on search term
+  const filteredChats = useMemo(() => {
+    if (!chats || !searchTerm.trim()) return chats;
+    return chats.filter((chat) =>
+      chat.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [chats, searchTerm]);
+
   return (
     <div className="flex flex-col w-60 border-r border-gray-200 bg-gray-50 p-4">
       <div className="flex items-center justify-between mb-4">
@@ -64,17 +74,28 @@ export default function Sidebar({
         </a>
       </div>
 
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <Input
+          placeholder="Search your chats..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9 pr-3 py-2 rounded-lg bg-white border-gray-300"
+        />
+      </div>
+
       <Button
         onClick={onNewChat}
         disabled={!user || isCreatingChat}
-        className="w-full mb-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full mb-4 bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isCreatingChat ? "Creating..." : "New Chat"}
       </Button>
 
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-        {chats?.map((chat) => (
+        {filteredChats?.map((chat) => (
           <Button
             key={chat._id}
             variant="ghost"
@@ -85,18 +106,9 @@ export default function Sidebar({
                 : "text-gray-700 hover:bg-gray-100"
             }`}
           >
-            <MessageSquare className="w-4 h-4 mr-2 flex-shrink-0" />
             <span className="truncate">{chat.title}</span>
           </Button>
         ))}
-      </div>
-
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-        <Input
-          placeholder="Search your threads..."
-          className="pl-9 pr-3 py-2 rounded-lg bg-white border-gray-300"
-        />
       </div>
 
       <div className="mt-auto">

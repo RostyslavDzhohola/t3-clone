@@ -124,7 +124,7 @@ export default function MessageInput({
               type="submit"
               size="sm"
               disabled={disabled || !input.trim()}
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-600 hover:bg-gray-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-400 hover:bg-gray-500 text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
               <Send className="w-3.5 h-3.5" />
               <span className="sr-only">Send message</span>
