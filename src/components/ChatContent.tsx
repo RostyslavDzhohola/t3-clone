@@ -3,6 +3,7 @@
 import React from "react";
 import { type Message } from "@ai-sdk/react";
 import { useUser } from "@clerk/nextjs";
+import { type LLMModel } from "@/lib/models";
 import WelcomeScreen from "./WelcomeScreen";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
@@ -15,6 +16,8 @@ interface ChatContentProps {
   onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  selectedModel: LLMModel;
+  onModelChange: (model: LLMModel) => void;
 }
 
 export default function ChatContent({
@@ -25,6 +28,8 @@ export default function ChatContent({
   onInputChange,
   onKeyDown,
   onSubmit,
+  selectedModel,
+  onModelChange,
 }: ChatContentProps) {
   const hasMessages = messages.length > 0;
 
@@ -52,6 +57,8 @@ export default function ChatContent({
               onSubmit={onSubmit}
               disabled={status !== "ready"}
               placeholder="Type your message here..."
+              selectedModel={selectedModel}
+              onModelChange={onModelChange}
             />
           </div>
         </div>

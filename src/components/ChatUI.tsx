@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { useRouter, usePathname } from "next/navigation";
 import { useMessageInput } from "../hooks";
+import { getDefaultModel, type LLMModel } from "@/lib/models";
 import Sidebar from "./Sidebar";
 import ChatContent from "./ChatContent";
 
@@ -18,6 +19,9 @@ export default function ChatUI() {
   const pathname = usePathname();
   const [currentChatId, setCurrentChatId] = useState<Id<"chats"> | null>(null);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<LLMModel>(
+    getDefaultModel()
+  );
 
   // Convex mutations and queries
   const createChat = useMutation(api.messages.createChat);
@@ -53,6 +57,9 @@ export default function ChatUI() {
     setMessages,
   } = useChat({
     api: "/api/chat",
+    body: {
+      model: selectedModel.id,
+    },
     onFinish: async (message: Message) => {
       console.log(
         "💬 AI message finished:",
@@ -227,6 +234,8 @@ export default function ChatUI() {
         onInputChange={enhancedInputChange}
         onKeyDown={handleKeyDown}
         onSubmit={enhancedSubmit}
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
       />
     </div>
   );

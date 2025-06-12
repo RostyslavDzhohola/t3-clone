@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Search, Paperclip, Send, ChevronDown } from "lucide-react";
+import { getAvailableModels, type LLMModel } from "@/lib/models";
 
 interface MessageInputProps {
   input: string;
@@ -17,6 +18,8 @@ interface MessageInputProps {
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   disabled?: boolean;
   placeholder?: string;
+  selectedModel: LLMModel;
+  onModelChange: (model: LLMModel) => void;
 }
 
 export default function MessageInput({
@@ -26,6 +29,8 @@ export default function MessageInput({
   onSubmit,
   disabled = false,
   placeholder = "Type your message here...",
+  selectedModel,
+  onModelChange,
 }: MessageInputProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // If Enter is pressed without Shift, submit the form
@@ -42,6 +47,9 @@ export default function MessageInput({
     // Call the original onKeyDown handler
     onKeyDown(e);
   };
+
+  const availableModels = getAvailableModels();
+
   return (
     <div className="w-full">
       <form onSubmit={onSubmit} className="relative">
@@ -79,18 +87,24 @@ export default function MessageInput({
                     size="sm"
                     className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-2 py-1 rounded-md font-medium h-7"
                   >
-                    Gemini 2.5 Flash
+                    {selectedModel.name}
                     <ChevronDown className="w-3 h-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem>Gemini 2.5 Flash</DropdownMenuItem>
-                  <DropdownMenuItem disabled>
-                    GPT-4 (Coming Soon)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled>
-                    Claude (Coming Soon)
-                  </DropdownMenuItem>
+                  {availableModels.map((model) => (
+                    <DropdownMenuItem
+                      key={model.id}
+                      onClick={() => onModelChange(model)}
+                      className={
+                        selectedModel.id === model.id
+                          ? "bg-gray-100 font-medium"
+                          : ""
+                      }
+                    >
+                      {model.name}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
 
