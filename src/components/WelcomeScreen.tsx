@@ -9,11 +9,13 @@ import { useUser } from "@clerk/nextjs";
 interface WelcomeScreenProps {
   user: ReturnType<typeof useUser>["user"];
   hasMessages: boolean;
+  onQuestionClick?: (question: string) => void;
 }
 
 export default function WelcomeScreen({
   user,
   hasMessages,
+  onQuestionClick,
 }: WelcomeScreenProps) {
   if (!user) {
     return (
@@ -69,24 +71,30 @@ export default function WelcomeScreen({
           <Button
             variant="ghost"
             className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
+            onClick={() => onQuestionClick?.("How does AI work?")}
           >
             How does AI work?
           </Button>
           <Button
             variant="ghost"
             className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
+            onClick={() => onQuestionClick?.("Are black holes real?")}
           >
             Are black holes real?
           </Button>
           <Button
             variant="ghost"
             className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
+            onClick={() =>
+              onQuestionClick?.('How many Rs are in the word "strawberry"?')
+            }
           >
             How many Rs are in the word &quot;strawberry&quot;?
           </Button>
           <Button
             variant="ghost"
             className="w-full justify-start text-lg text-gray-700 hover:bg-gray-100 px-4 py-3 rounded-lg"
+            onClick={() => onQuestionClick?.("What is the meaning of life?")}
           >
             What is the meaning of life?
           </Button>

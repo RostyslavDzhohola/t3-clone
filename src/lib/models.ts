@@ -95,5 +95,9 @@ export function getAvailableModels(): LLMModel[] {
  */
 export function getDefaultModel(): LLMModel {
   const availableModels = getAvailableModels();
-  return availableModels[0] || AVAILABLE_MODELS[0];
+  if (availableModels.length > 0) return availableModels[0];
+  if (AVAILABLE_MODELS.length > 0) return AVAILABLE_MODELS[0];
+  throw new Error(
+    "No LLM models configured – please populate AVAILABLE_MODELS"
+  );
 }

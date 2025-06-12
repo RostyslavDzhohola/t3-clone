@@ -18,6 +18,7 @@ interface ChatContentProps {
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   selectedModel: LLMModel;
   onModelChange: (model: LLMModel) => void;
+  onQuestionClick: (question: string) => void;
 }
 
 export default function ChatContent({
@@ -30,6 +31,7 @@ export default function ChatContent({
   onSubmit,
   selectedModel,
   onModelChange,
+  onQuestionClick,
 }: ChatContentProps) {
   const hasMessages = messages.length > 0;
 
@@ -39,7 +41,11 @@ export default function ChatContent({
       <div className="flex-1 overflow-y-auto pb-32">
         <div className="w-full max-w-3xl mx-auto px-4">
           {!user || !hasMessages ? (
-            <WelcomeScreen user={user} hasMessages={hasMessages} />
+            <WelcomeScreen
+              user={user}
+              hasMessages={hasMessages}
+              onQuestionClick={onQuestionClick}
+            />
           ) : (
             <MessageList messages={messages} status={status} />
           )}

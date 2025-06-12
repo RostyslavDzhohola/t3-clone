@@ -55,6 +55,7 @@ export default function ChatUI() {
     handleSubmit,
     status,
     setMessages,
+    append,
   } = useChat({
     api: "/api/chat",
     body: {
@@ -216,6 +217,64 @@ export default function ChatUI() {
     onSubmit(e, input);
   };
 
+  // Handle question click from WelcomeScreen
+  const handleQuestionClick = async (question: string) => {
+    console.log("🤔 Question clicked:", question);
+
+    if (!user) {
+      console.warn("⚠️ Cannot send question - user not authenticated");
+      return;
+    }
+
+    // Ensure we have a chat to send the message to
+    let activeChatId = currentChatId;
+    if (!activeChatId) {
+      console.log("🆕 No active chat, creating one for question");
+      activeChatId = await createNewChat();
+      if (!activeChatId) {
+        console.error("❌ Failed to create chat for question");
+        return;
+      }
+    }
+
+    try {
+      // First, save the user message to Convex
+      console.log("💾 Saving user question to Convex...");
+      const messageId = await saveMessage({
+        chatId: activeChatId,
+        userId: user.id,
+        role: "user",
+        body: question,
+      });
+      console.log("✅ User question saved with ID:", messageId);
+
+      // Update chat title if this is the first message
+      const isFirstMessage = messages.length === 0;
+      if (isFirstMessage) {
+        const title =
+          question.slice(0, 30) + (question.length > 30 ? "..." : "");
+        try {
+          console.log("🏷️ Updating chat title to:", title);
+          await updateChatTitle({
+            chatId: activeChatId,
+            title,
+          });
+          console.log("✅ Chat title updated");
+        } catch (error) {
+          console.error("❌ Failed to update chat title:", error);
+        }
+      }
+
+      // Then, use append to send the question and trigger AI response
+      await append({
+        role: "user",
+        content: question,
+      });
+    } catch (error) {
+      console.error("❌ Failed to process question:", error);
+    }
+  };
+
   return (
     <div className="flex h-screen w-full bg-gray-50">
       <Sidebar
@@ -236,6 +295,7 @@ export default function ChatUI() {
         onSubmit={enhancedSubmit}
         selectedModel={selectedModel}
         onModelChange={setSelectedModel}
+        onQuestionClick={handleQuestionClick}
       />
     </div>
   );
