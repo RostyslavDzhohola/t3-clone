@@ -40,7 +40,7 @@ export default function MessageInput({
             onKeyDown={onKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className="w-full px-4 py-6 text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none placeholder:text-gray-500"
+            className="w-full px-4 py-6 text-base bg-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none placeholder:text-gray-500"
           />
 
           {/* Bottom Controls Bar */}
