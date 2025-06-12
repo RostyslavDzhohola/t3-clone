@@ -4,21 +4,12 @@ import type React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Search,
   Plus,
   MessageSquare,
   Code,
   BookOpen,
   Lightbulb,
-  Paperclip,
-  Send,
-  ChevronDown,
   Moon,
 } from "lucide-react";
 import { useChat, type Message } from "@ai-sdk/react";
@@ -34,6 +25,10 @@ import { api } from "../../convex/_generated/api";
 import { useEffect, useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { useRouter, usePathname } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import MessageInput from "./MessageInput";
+import { useMessageInput } from "../hooks";
 
 export default function ChatUI() {
   const { user } = useUser();
@@ -139,6 +134,19 @@ export default function ChatUI() {
     }
   };
 
+  // Use the message input hook
+  const { handleInputChangeWithAutoCreate, onSubmit, handleKeyDown } =
+    useMessageInput({
+      user,
+      currentChatId,
+      saveMessage,
+      updateChatTitle,
+      createNewChat,
+      setCurrentChatId,
+      messages,
+      handleSubmit,
+    });
+
   // Handle New Chat button
   const handleNewChat = async () => {
     console.log("🖱️ New Chat button clicked");
@@ -192,99 +200,14 @@ export default function ChatUI() {
     }
   }, [pathname, currentChatId]);
 
-  // Auto-generate chat title from first user message
-  const updateTitleFromFirstMessage = async (
-    chatId: Id<"chats">,
-    firstMessage: string
-  ) => {
-    const title =
-      firstMessage.slice(0, 30) + (firstMessage.length > 30 ? "..." : "");
-    try {
-      console.log("🏷️ Updating chat title to:", title);
-      await updateChatTitle({
-        chatId,
-        title,
-      });
-      console.log("✅ Chat title updated");
-    } catch (error) {
-      console.error("❌ Failed to update chat title:", error);
-    }
+  // Create enhanced input change handler
+  const enhancedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChangeWithAutoCreate(e, handleInputChange);
   };
 
-  // Auto-create chat when user starts typing (if no current chat)
-  const handleInputChangeWithAutoCreate = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    handleInputChange(e);
-
-    // If user starts typing and there's no current chat, create one
-    if (!currentChatId && e.target.value.trim() && user && !isCreatingChat) {
-      console.log("⌨️ Auto-creating chat because user started typing");
-      const newChatId = await createNewChat();
-      if (newChatId) {
-        setCurrentChatId(newChatId);
-      }
-    }
-  };
-
-  // Handle form submission (both Enter key and Send button)
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log("📤 Form submitted with input:", input.slice(0, 50) + "...");
-
-    // Ensure we have a chat to send the message to
-    let activeChatId = currentChatId;
-    if (!activeChatId && user) {
-      console.log("🆕 No active chat, creating one for message submission");
-      activeChatId = await createNewChat();
-      if (!activeChatId) {
-        console.error("❌ Failed to create chat for message");
-        return;
-      }
-    }
-
-    // Save user message to Convex
-    const currentInput = input;
-    if (user && activeChatId && currentInput.trim()) {
-      const isFirstMessage = messages.length === 0;
-
-      try {
-        console.log("💾 Saving user message to Convex...");
-        const messageId = await saveMessage({
-          chatId: activeChatId,
-          userId: user.id,
-          role: "user",
-          body: currentInput,
-        });
-        console.log("✅ User message saved with ID:", messageId);
-
-        // Update chat title if this is the first message
-        if (isFirstMessage) {
-          await updateTitleFromFirstMessage(activeChatId, currentInput);
-        }
-      } catch (error) {
-        console.error("❌ Failed to save user message:", error);
-      }
-    }
-
-    // Submit to AI chat
-    handleSubmit(e);
-  };
-
-  // Handle Enter key specifically
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      console.log("⏎ Enter key pressed, submitting form");
-      const form = e.currentTarget.closest("form");
-      if (form) {
-        const formEvent = new Event("submit", {
-          bubbles: true,
-          cancelable: true,
-        });
-        form.dispatchEvent(formEvent);
-      }
-    }
+  // Create enhanced submit handler
+  const enhancedSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    onSubmit(e, input);
   };
 
   return (
@@ -299,7 +222,7 @@ export default function ChatUI() {
             className="text-indigo-600 font-bold text-lg hover:text-indigo-700 transition-colors"
             title="View T3 Chat Clone-a-thon on GitHub"
           >
-            T3 Chat Cloneathon
+            T3.1 Chat clone
           </a>
           <a
             href="https://github.com/RostyslavDzhohola/t3-clone"
@@ -468,29 +391,64 @@ export default function ChatUI() {
               </div>
             </div>
           ) : (
-            <div className="space-y-4 max-w-3xl mx-auto pt-8">
+            <div className="space-y-6 max-w-3xl mx-auto pt-8">
               {messages.map((m: Message) => (
-                <div
-                  key={m.id}
-                  className={`flex ${
-                    m.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <div
-                    className={`max-w-[70%] p-3 rounded-lg ${
-                      m.role === "user"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-white text-gray-800"
-                    }`}
-                  >
-                    {m.content}
-                  </div>
+                <div key={m.id} className="w-full">
+                  {m.role === "user" ? (
+                    <div className="flex justify-end mb-4">
+                      <div className="max-w-[70%] p-4 rounded-lg bg-indigo-600 text-white">
+                        {m.content}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full p-4 text-gray-800">
+                      <div className="prose prose-gray max-w-none prose-headings:text-gray-800 prose-p:text-gray-700 prose-strong:text-gray-800 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-[2px] prose-code:rounded prose-code:text-sm prose-pre:bg-gray-100 prose-pre:border prose-pre:border-gray-200 prose-blockquote:border-l-indigo-500 prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic prose-ul:list-disc prose-ol:list-decimal prose-li:marker:text-gray-500">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            code: (props: React.ComponentProps<"code">) => {
+                              const { className, children, ...rest } = props;
+                              const isInline =
+                                !className || !className.includes("language-");
+                              return isInline ? (
+                                <code
+                                  className="bg-gray-100 px-1 py-[2px] rounded text-sm"
+                                  {...rest}
+                                >
+                                  {children}
+                                </code>
+                              ) : (
+                                <pre className="bg-gray-100 border border-gray-200 rounded-md p-4 overflow-x-auto">
+                                  <code className={className} {...rest}>
+                                    {children}
+                                  </code>
+                                </pre>
+                              );
+                            },
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {(status === "submitted" || status === "streaming") && (
-                <div className="flex justify-start">
-                  <div className="max-w-[70%] p-3 rounded-lg bg-white text-gray-800">
-                    AI is typing...
+                <div className="w-full p-4 text-gray-800">
+                  <div className="flex items-center gap-2">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"></div>
+                      <div
+                        className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.1s" }}
+                      ></div>
+                      <div
+                        className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.2s" }}
+                      ></div>
+                    </div>
+                    <span className="text-gray-500">AI is thinking...</span>
                   </div>
                 </div>
               )}
@@ -500,66 +458,15 @@ export default function ChatUI() {
 
         {/* Message Input Area */}
         {user && (
-          <div className="absolute bottom-0 w-full p-4 flex justify-center">
-            <form onSubmit={onSubmit} className="w-full max-w-3xl space-y-3">
-              {/* Input field */}
-              <div className="relative">
-                <Input
-                  value={input}
-                  onChange={handleInputChangeWithAutoCreate}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Type your message here..."
-                  className="w-full py-6 px-4 rounded-xl border-gray-300 bg-white focus-visible:ring-indigo-500 focus-visible:ring-offset-gray-50 text-base shadow-sm"
-                  disabled={status !== "ready"}
-                />
-              </div>
-
-              {/* Controls row */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="flex items-center gap-1 text-gray-700 hover:bg-gray-100 px-3 py-1 rounded-md text-sm"
-                      >
-                        Gemini 2.5 Flash
-                        <ChevronDown className="w-3 h-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuItem>Gemini 2.5 Flash</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-1 text-gray-400 cursor-not-allowed px-3 py-1 rounded-md opacity-50"
-                    disabled
-                  >
-                    <Search className="w-4 h-4" />
-                    Search
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-1 text-gray-400 cursor-not-allowed px-3 py-1 rounded-md text-sm opacity-50"
-                    disabled
-                  >
-                    <Paperclip className="w-4 h-4" />
-                    Attach
-                  </Button>
-                </div>
-
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-[#4338CA] text-white"
-                  disabled={status !== "ready"}
-                >
-                  <Send className="w-5 h-5" />
-                  <span className="sr-only">Send message</span>
-                </Button>
-              </div>
-            </form>
+          <div className="absolute bottom-0 w-full p-4 flex justify-center bg-gray-50">
+            <MessageInput
+              input={input}
+              onInputChange={enhancedInputChange}
+              onKeyDown={handleKeyDown}
+              onSubmit={enhancedSubmit}
+              disabled={status !== "ready"}
+              placeholder="Type your message here..."
+            />
           </div>
         )}
       </div>
