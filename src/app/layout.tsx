@@ -25,7 +25,7 @@ export default function RootLayout({
           <Script
             data-website-id="684a2754569da665c6b838ca"
             data-domain="t3-clone-hackathon.vercel.app"
-            src="https://datafa.st/js/script.js"
+            src="/js/script.js"
             strategy="afterInteractive"
           />
         </head>
