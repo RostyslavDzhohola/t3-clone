@@ -4,13 +4,8 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, MessageSquare } from "lucide-react";
-import {
-  SignInButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-  useUser,
-} from "@clerk/nextjs";
+import type { useUser } from "@clerk/nextjs"; // type-only
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Id } from "../../convex/_generated/dataModel";
 
 interface Chat {

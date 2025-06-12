@@ -21,7 +21,7 @@ export default function MessageList({ messages, status }: MessageListProps) {
               </div>
             </div>
           ) : (
-            <div className="w-full mb-6">
+            <div className="w-full mb-4">
               <MessageRenderer content={m.content} />
             </div>
           )}

@@ -32,7 +32,11 @@ export default function MessageInput({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!disabled && input.trim()) {
-        onSubmit(e as any);
+        // Trigger form submission by clicking the submit button
+        const form = e.currentTarget.closest("form");
+        if (form) {
+          form.requestSubmit();
+        }
       }
     }
     // Call the original onKeyDown handler
