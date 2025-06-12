@@ -42,6 +42,14 @@ export async function POST(req: Request) {
       selectedModel = getDefaultModel();
     }
 
+    // Ensure selectedModel is defined before accessing its id
+    if (!selectedModel) {
+      return NextResponse.json(
+        { error: "No available model found" },
+        { status: 400 }
+      );
+    }
+
     const modelId = selectedModel.id;
 
     // Call streamText with error handling
