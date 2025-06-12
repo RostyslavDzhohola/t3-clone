@@ -135,17 +135,29 @@ export default function ChatUI() {
   };
 
   // Use the message input hook
-  const { handleInputChangeWithAutoCreate, onSubmit, handleKeyDown } =
-    useMessageInput({
-      user,
-      currentChatId,
-      saveMessage,
-      updateChatTitle,
-      createNewChat,
-      setCurrentChatId,
-      messages,
-      handleSubmit,
-    });
+  const {
+    handleInputChangeWithAutoCreate,
+    onSubmit,
+    handleKeyDown: hookHandleKeyDown,
+  } = useMessageInput({
+    user,
+    currentChatId,
+    saveMessage,
+    updateChatTitle,
+    createNewChat,
+    setCurrentChatId,
+    messages,
+    handleSubmit,
+  });
+
+  // Create enhanced key down handler for textarea
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const syntheticEvent = {
+      ...e,
+      target: { value: e.currentTarget.value } as HTMLInputElement,
+    } as unknown as React.KeyboardEvent<HTMLInputElement>;
+    hookHandleKeyDown(syntheticEvent);
+  };
 
   // Handle New Chat button
   const handleNewChat = async () => {
@@ -201,8 +213,13 @@ export default function ChatUI() {
   }, [pathname, currentChatId]);
 
   // Create enhanced input change handler
-  const enhancedInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleInputChangeWithAutoCreate(e, handleInputChange);
+  const enhancedInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // Create a synthetic input event for the useChat hook
+    const syntheticEvent = {
+      ...e,
+      target: { value: e.target.value } as HTMLInputElement,
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    handleInputChangeWithAutoCreate(syntheticEvent, handleInputChange);
   };
 
   // Create enhanced submit handler
@@ -220,7 +237,7 @@ export default function ChatUI() {
             target="_blank"
             rel="noopener noreferrer"
             className="text-indigo-600 font-bold text-lg hover:text-indigo-700 transition-colors"
-            title="View T3 Chat Clone-a-thon on GitHub"
+            title="View T3 Chat Cloneathon on GitHub"
           >
             T3.1 Chat clone
           </a>
