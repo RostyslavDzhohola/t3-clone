@@ -1,16 +1,21 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Figtree } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "./ConvexClientProvider";
+import { Toaster } from "@/components/ui/sonner";
 
-const inter = Inter({ subsets: ["latin"] });
+const figtree = Figtree({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
 
 export const metadata: Metadata = {
-  title: "T3 Chat Clone",
-  description: "Building a T3 Chat Clone",
+  title: "T3.1 Chat Clone",
+  description: "Building a T3.1 Chat Clone",
 };
 
 export default function RootLayout({
@@ -29,8 +34,9 @@ export default function RootLayout({
             strategy="afterInteractive"
           />
         </head>
-        <body className={inter.className}>
+        <body className={figtree.className}>
           <ConvexClientProvider>{children}</ConvexClientProvider>
+          <Toaster />
         </body>
       </html>
     </ClerkProvider>

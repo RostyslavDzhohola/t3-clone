@@ -1,6 +1,6 @@
 "use client";
 
-import type React from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +29,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MessageInput from "./MessageInput";
 import { useMessageInput } from "../hooks";
+import { toast } from "sonner";
 
 export default function ChatUI() {
   const { user } = useUser();
@@ -321,14 +322,6 @@ export default function ChatUI() {
 
       {/* Main Content */}
       <div className="flex flex-col flex-1 relative">
-        {/* Top Controls */}
-        <div className="flex justify-end p-4 space-x-2">
-          <Button variant="ghost" size="icon" className="w-8 h-8 text-gray-500">
-            <Moon className="w-4 h-4" />
-            <span className="sr-only">Toggle dark mode</span>
-          </Button>
-        </div>
-
         {/* Chat Content */}
         <div className="flex-1 overflow-y-auto px-4 pb-32">
           {!user ? (
@@ -408,38 +401,175 @@ export default function ChatUI() {
               </div>
             </div>
           ) : (
-            <div className="space-y-6 max-w-3xl mx-auto pt-8">
+            <div className="space-y-8 max-w-4xl mx-auto pt-6 pb-8">
               {messages.map((m: Message) => (
                 <div key={m.id} className="w-full">
                   {m.role === "user" ? (
-                    <div className="flex justify-end mb-4">
-                      <div className="max-w-[70%] p-4 rounded-lg bg-indigo-600 text-white">
+                    <div className="flex justify-end mb-6">
+                      <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-indigo-600 text-white text-sm leading-relaxed">
                         {m.content}
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full p-4 text-gray-800">
-                      <div className="prose prose-gray max-w-none prose-headings:text-gray-800 prose-p:text-gray-700 prose-strong:text-gray-800 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-[2px] prose-code:rounded prose-code:text-sm prose-pre:bg-gray-100 prose-pre:border prose-pre:border-gray-200 prose-blockquote:border-l-indigo-500 prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic prose-ul:list-disc prose-ol:list-decimal prose-li:marker:text-gray-500">
+                    <div className="w-full mb-6">
+                      <div className="prose prose-gray max-w-none text-sm leading-relaxed prose-headings:text-gray-900 prose-headings:font-semibold prose-h1:text-lg prose-h1:mb-4 prose-h2:text-base prose-h2:mb-3 prose-h3:text-sm prose-h3:mb-2 prose-p:text-gray-800 prose-p:mb-4 prose-p:leading-relaxed prose-strong:text-gray-900 prose-strong:font-semibold prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-xs prose-code:font-mono prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200 prose-pre:rounded-lg prose-pre:p-0 prose-pre:mb-4 prose-blockquote:border-l-gray-300 prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-700 prose-ul:mb-4 prose-ul:space-y-1 prose-ol:mb-4 prose-ol:space-y-1 prose-li:text-gray-800 prose-li:leading-relaxed prose-li:mb-1">
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
+                            p: ({ children }) => (
+                              <p className="text-sm text-gray-800 leading-relaxed mb-4">
+                                {children}
+                              </p>
+                            ),
+                            h1: ({ children }) => (
+                              <h1 className="text-lg font-semibold text-gray-900 mb-4 mt-6">
+                                {children}
+                              </h1>
+                            ),
+                            h2: ({ children }) => (
+                              <h2 className="text-base font-semibold text-gray-900 mb-3 mt-5">
+                                {children}
+                              </h2>
+                            ),
+                            h3: ({ children }) => (
+                              <h3 className="text-sm font-semibold text-gray-900 mb-2 mt-4">
+                                {children}
+                              </h3>
+                            ),
+                            ul: ({ children }) => (
+                              <ul className="list-disc pl-6 mb-4 space-y-2">
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children }) => (
+                              <ol className="list-decimal pl-6 mb-4 space-y-2">
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children }) => (
+                              <li className="text-sm text-gray-800 leading-relaxed">
+                                {children}
+                              </li>
+                            ),
+                            blockquote: ({ children }) => (
+                              <blockquote className="border-l-4 border-l-gray-300 pl-4 italic text-gray-700 mb-4">
+                                {children}
+                              </blockquote>
+                            ),
+                            strong: ({ children }) => (
+                              <strong className="font-semibold text-gray-900">
+                                {children}
+                              </strong>
+                            ),
                             code: (props: React.ComponentProps<"code">) => {
                               const { className, children, ...rest } = props;
                               const isInline =
                                 !className || !className.includes("language-");
-                              return isInline ? (
-                                <code
-                                  className="bg-gray-100 px-1 py-[2px] rounded text-sm"
-                                  {...rest}
-                                >
-                                  {children}
-                                </code>
-                              ) : (
-                                <pre className="bg-gray-100 border border-gray-200 rounded-md p-4 overflow-x-auto">
-                                  <code className={className} {...rest}>
+
+                              if (isInline) {
+                                return (
+                                  <code
+                                    className="bg-gray-100 px-2 py-1 rounded text-xs font-mono text-gray-800"
+                                    {...rest}
+                                  >
                                     {children}
                                   </code>
-                                </pre>
+                                );
+                              }
+
+                              // Extract language from className (e.g., "language-typescript" -> "typescript")
+                              const language =
+                                className?.replace("language-", "") || "text";
+                              const codeContent = String(children).replace(
+                                /\n$/,
+                                ""
+                              );
+                              const [copied, setCopied] = React.useState(false);
+
+                              const handleCopy = async () => {
+                                try {
+                                  await navigator.clipboard.writeText(
+                                    codeContent
+                                  );
+                                  setCopied(true);
+
+                                  // Show toast notification
+                                  toast.success("Copied to clipboard!", {
+                                    duration: 2000,
+                                  });
+
+                                  // Reset the copied state after animation
+                                  setTimeout(() => setCopied(false), 2000);
+                                } catch (err) {
+                                  console.error("Failed to copy code:", err);
+                                  toast.error(
+                                    "Failed to copy code to clipboard"
+                                  );
+                                }
+                              };
+
+                              return (
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg mb-4 overflow-hidden">
+                                  {/* Language header with copy button */}
+                                  <div className="bg-gray-100 border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+                                    <span className="text-xs font-medium text-gray-600 lowercase">
+                                      {language}
+                                    </span>
+                                    <button
+                                      onClick={handleCopy}
+                                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+                                      title="Copy code"
+                                    >
+                                      {copied ? (
+                                        // Checkmark icon for copied state
+                                        <svg
+                                          className="w-3.5 h-3.5 text-green-600 animate-pulse"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                          />
+                                        </svg>
+                                      ) : (
+                                        // Clipboard icon for default state
+                                        <svg
+                                          className="w-3.5 h-3.5"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                          />
+                                        </svg>
+                                      )}
+                                      <span
+                                        className={
+                                          copied ? "text-green-600" : ""
+                                        }
+                                      >
+                                        {copied ? "Copied!" : "Copy"}
+                                      </span>
+                                    </button>
+                                  </div>
+                                  {/* Code content */}
+                                  <pre className="p-4 overflow-x-auto">
+                                    <code
+                                      className={`${className} text-xs font-mono leading-relaxed text-gray-800`}
+                                      {...rest}
+                                    >
+                                      {children}
+                                    </code>
+                                  </pre>
+                                </div>
                               );
                             },
                           }}
@@ -452,8 +582,8 @@ export default function ChatUI() {
                 </div>
               ))}
               {(status === "submitted" || status === "streaming") && (
-                <div className="w-full p-4 text-gray-800">
-                  <div className="flex items-center gap-2">
+                <div className="w-full mb-6">
+                  <div className="flex items-center gap-3">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"></div>
                       <div
@@ -465,7 +595,6 @@ export default function ChatUI() {
                         style={{ animationDelay: "0.2s" }}
                       ></div>
                     </div>
-                    <span className="text-gray-500">AI is thinking...</span>
                   </div>
                 </div>
               )}
@@ -475,7 +604,7 @@ export default function ChatUI() {
 
         {/* Message Input Area */}
         {user && (
-          <div className="absolute bottom-0 w-full bg-gray-50">
+          <div className="absolute bottom-0 w-full">
             <div className="w-full max-w-3xl mx-auto px-4 pt-4">
               <MessageInput
                 input={input}
