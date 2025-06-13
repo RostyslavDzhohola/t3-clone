@@ -222,7 +222,12 @@ export default function ChatUI() {
         setAnonymousChats(updatedChats);
         localStorage.setItem(ANONYMOUS_CHATS_KEY, JSON.stringify(updatedChats));
 
-        console.log("✅ AI message saved to localStorage");
+        // Increment count for assistant message
+        setAnonymousMessageCount((c) => c + 1);
+
+        console.log(
+          "✅ AI message saved to localStorage and count incremented"
+        );
       }
     },
   });
@@ -489,7 +494,7 @@ export default function ChatUI() {
     if (
       !user &&
       (isAnonymousLimitReached ||
-        anonymousMessageCount + 2 > ANONYMOUS_MESSAGE_LIMIT)
+        anonymousMessageCount + 1 > ANONYMOUS_MESSAGE_LIMIT)
     ) {
       setIsAnonymousLimitReached(true);
       return;

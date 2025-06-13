@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       const body = await req.json();
       messages = body.messages;
       selectedModelId = body.model;
-      isAnonymous = body.anonymous || false;
+      isAnonymous = body.anonymous === true;
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
