@@ -77,6 +77,16 @@ export const AVAILABLE_MODELS: LLMModel[] = [
 ];
 
 /**
+ * Anonymous users can only use Gemini 2.5 Flash
+ */
+export const ANONYMOUS_MODEL: LLMModel = {
+  id: "google/gemini-2.5-flash-preview-04-17",
+  name: "Gemini 2.5 Flash",
+  provider: "Google",
+  available: true,
+};
+
+/**
  * Get a specific model by its ID
  */
 export function getModelById(modelId: string): LLMModel | undefined {
@@ -91,6 +101,13 @@ export function getAvailableModels(): LLMModel[] {
 }
 
 /**
+ * Get models available for anonymous users (only Gemini 2.5 Flash)
+ */
+export function getAnonymousModels(): LLMModel[] {
+  return [ANONYMOUS_MODEL];
+}
+
+/**
  * Get the default model (first available model)
  */
 export function getDefaultModel(): LLMModel {
@@ -99,4 +116,18 @@ export function getDefaultModel(): LLMModel {
   throw new Error(
     "No available LLM models found – please check your AVAILABLE_MODELS configuration."
   );
+}
+
+/**
+ * Get the default model for anonymous users (always Gemini 2.5 Flash)
+ */
+export function getDefaultAnonymousModel(): LLMModel {
+  return ANONYMOUS_MODEL;
+}
+
+/**
+ * Check if a model is available for anonymous users
+ */
+export function isModelAvailableForAnonymous(modelId: string): boolean {
+  return modelId === ANONYMOUS_MODEL.id;
 }

@@ -36,11 +36,11 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Show loading or nothing while detecting
+  // Show loading while detecting mobile
   if (isLoading) {
     return null;
   }
 
-  // Render ONLY mobile warning on mobile, ONLY ChatUI on desktop
+  // Show mobile warning on mobile devices, otherwise show ChatUI for everyone
   return isMobile ? <MobileWarning /> : <ChatUI />;
 }

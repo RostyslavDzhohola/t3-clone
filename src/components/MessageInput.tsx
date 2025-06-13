@@ -20,6 +20,7 @@ interface MessageInputProps {
   placeholder?: string;
   selectedModel: LLMModel;
   onModelChange: (model: LLMModel) => void;
+  availableModels?: LLMModel[];
 }
 
 export default function MessageInput({
@@ -31,6 +32,7 @@ export default function MessageInput({
   placeholder = "Type your message here...",
   selectedModel,
   onModelChange,
+  availableModels,
 }: MessageInputProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // If Enter is pressed without Shift, submit the form
@@ -48,7 +50,7 @@ export default function MessageInput({
     onKeyDown(e);
   };
 
-  const availableModels = getAvailableModels();
+  const modelsToShow = availableModels || getAvailableModels();
 
   return (
     <div className="w-full">
@@ -92,7 +94,7 @@ export default function MessageInput({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-48">
-                  {availableModels.map((model) => (
+                  {modelsToShow.map((model) => (
                     <DropdownMenuItem
                       key={model.id}
                       onClick={() => onModelChange(model)}
@@ -133,15 +135,14 @@ export default function MessageInput({
               </Button>
             </div>
 
-            {/* Send Button */}
+            {/* Right Side - Send Button */}
             <Button
               type="submit"
-              size="sm"
               disabled={disabled || !input.trim()}
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-400 hover:bg-gray-500 text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md text-xs font-medium h-7 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span className="sr-only">Send message</span>
+              <Send className="w-3 h-3" />
+              Send
             </Button>
           </div>
         </div>

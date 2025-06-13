@@ -2,35 +2,18 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { SignInButton } from "@clerk/nextjs";
 import { Code, BookOpen, Lightbulb, MessageSquare } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
 
 interface WelcomeScreenProps {
-  user: ReturnType<typeof useUser>["user"];
   hasMessages: boolean;
   onQuestionClick?: (question: string) => void;
 }
 
 export default function WelcomeScreen({
-  user,
   hasMessages,
   onQuestionClick,
 }: WelcomeScreenProps) {
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center">
-        <h1 className="text-3xl font-bold mb-8 text-gray-700">Welcome!</h1>
-        <p className="text-gray-600 mb-8">Please sign in to start chatting</p>
-        <SignInButton mode="modal">
-          <Button className="bg-gray-400 hover:bg-gray-500 text-white">
-            Sign In
-          </Button>
-        </SignInButton>
-      </div>
-    );
-  }
-
+  // Always show the chat interface (remove the sign-in requirement)
   if (!hasMessages) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">

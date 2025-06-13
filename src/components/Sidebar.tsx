@@ -9,17 +9,18 @@ import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Id } from "../../convex/_generated/dataModel";
 
 interface Chat {
-  _id: Id<"chats">;
+  _id: Id<"chats"> | string;
   title: string;
 }
 
 interface SidebarProps {
   user: ReturnType<typeof useUser>["user"];
   chats: Chat[] | undefined;
-  currentChatId: Id<"chats"> | null;
+  currentChatId: Id<"chats"> | string | null;
   isCreatingChat: boolean;
   onNewChat: () => void;
-  onChatSelect: (chatId: Id<"chats">) => void;
+  onChatSelect: (chatId: Id<"chats"> | string) => void;
+  isAnonymousLimitReached?: boolean;
 }
 
 export default function Sidebar({
@@ -29,6 +30,7 @@ export default function Sidebar({
   isCreatingChat,
   onNewChat,
   onChatSelect,
+  isAnonymousLimitReached,
 }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -87,7 +89,7 @@ export default function Sidebar({
 
       <Button
         onClick={onNewChat}
-        disabled={!user || isCreatingChat}
+        disabled={(!user && isAnonymousLimitReached) || isCreatingChat}
         className="w-full mb-4 bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isCreatingChat ? "Creating..." : "New Chat"}
