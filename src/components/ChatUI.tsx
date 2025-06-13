@@ -206,28 +206,31 @@ export default function ChatUI() {
         } catch (error) {
           console.error("❌ Failed to save AI message:", error);
         }
-      } else if (!user && currentAnonymousChat) {
+      } else if (!user) {
         // Save AI response to localStorage for anonymous users
-        const updatedMessages = [...currentAnonymousChat.messages, message];
-        const updatedChat = {
-          ...currentAnonymousChat,
-          messages: updatedMessages,
-        };
-        setCurrentAnonymousChat(updatedChat);
+        setCurrentAnonymousChat((prevChat) => {
+          if (!prevChat) return prevChat;
+          const updatedMessages = [...prevChat.messages, message];
+          const updatedChat = { ...prevChat, messages: updatedMessages };
 
-        // Update localStorage
-        const updatedChats = anonymousChats.map((chat) =>
-          chat.id === currentAnonymousChat.id ? updatedChat : chat
-        );
-        setAnonymousChats(updatedChats);
-        localStorage.setItem(ANONYMOUS_CHATS_KEY, JSON.stringify(updatedChats));
+          setAnonymousChats((prevChats) => {
+            const updatedChats = prevChats.map((chat) =>
+              chat.id === prevChat.id ? updatedChat : chat
+            );
+            localStorage.setItem(
+              ANONYMOUS_CHATS_KEY,
+              JSON.stringify(updatedChats)
+            );
+            return updatedChats;
+          });
 
-        // Increment count for assistant message
-        setAnonymousMessageCount((c) => c + 1);
+          setAnonymousMessageCount((c) => c + 1);
 
-        console.log(
-          "✅ AI message saved to localStorage and count incremented"
-        );
+          console.log(
+            "✅ AI message saved to localStorage and count incremented"
+          );
+          return updatedChat;
+        });
       }
     },
   });
