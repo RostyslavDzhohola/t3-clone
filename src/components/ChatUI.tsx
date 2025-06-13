@@ -684,7 +684,7 @@ export default function ChatUI() {
         title="View DataFast Analytics Dashboard"
       >
         <iframe
-          src="https://datafa.st/widgets/684a2754569da665c6b838ca/realtime?mainTextSize=10&primaryColor=%233cda10"
+          src="https://datafa.st/widgets/684a2754569da665c6b838ca/realtime?mainTextSize=10&primaryColor=%233cda10&theme=light"
           style={{
             background: "transparent",
             border: "none",
