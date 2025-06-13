@@ -56,7 +56,7 @@ export default function MessageInput({
     <div className="w-full">
       <form onSubmit={onSubmit} className="relative">
         {/* Main Input Container */}
-        <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-2xl shadow-sm focus-within:ring-2 focus-within:ring-gray-400 focus-within:border-transparent focus-within:border-b-0">
+        <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-2xl shadow-sm ">
           {/* Text Input */}
           <textarea
             value={input}

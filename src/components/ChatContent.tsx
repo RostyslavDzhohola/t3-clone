@@ -3,10 +3,8 @@
 import React, { useEffect } from "react";
 import { type Message } from "@ai-sdk/react";
 
-import { type LLMModel } from "@/lib/models";
 import WelcomeScreen from "./WelcomeScreen";
 import MessageList from "./MessageList";
-import MessageInput from "./MessageInput";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { SignInButton } from "@clerk/nextjs";
@@ -15,12 +13,6 @@ import { toast } from "sonner";
 interface ChatContentProps {
   messages: Message[];
   status: "ready" | "submitted" | "streaming" | "error";
-  input: string;
-  onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  selectedModel: LLMModel;
-  onModelChange: (model: LLMModel) => void;
   onQuestionClick: (question: string) => void;
   isAnonymous?: boolean;
   isAnonymousLimitReached?: boolean;
@@ -31,12 +23,6 @@ interface ChatContentProps {
 export default function ChatContent({
   messages,
   status,
-  input,
-  onInputChange,
-  onKeyDown,
-  onSubmit,
-  selectedModel,
-  onModelChange,
   onQuestionClick,
   isAnonymous = false,
   isAnonymousLimitReached = false,
@@ -117,8 +103,8 @@ export default function ChatContent({
       )}
 
       {/* Chat Content */}
-      <div className="flex-1 overflow-y-auto pb-32">
-        <div className="w-full max-w-3xl mx-auto px-4">
+      <div className="flex-1 overflow-y-auto">
+        <div className="w-full max-w-3xl mx-auto px-4 pb-32">
           {!hasMessages ? (
             <WelcomeScreen
               hasMessages={hasMessages}
@@ -129,28 +115,6 @@ export default function ChatContent({
           )}
         </div>
       </div>
-
-      {/* Message Input Area - now shows for both authenticated and anonymous users */}
-      {!isAnonymousLimitReached && (
-        <div className="w-full">
-          <div className="w-full max-w-3xl mx-auto">
-            <MessageInput
-              input={input}
-              onInputChange={onInputChange}
-              onKeyDown={onKeyDown}
-              onSubmit={onSubmit}
-              disabled={status !== "ready"}
-              placeholder={
-                isAnonymous
-                  ? "Type your message here... (Anonymous mode)"
-                  : "Type your message here..."
-              }
-              selectedModel={selectedModel}
-              onModelChange={onModelChange}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
