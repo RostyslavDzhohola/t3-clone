@@ -15,7 +15,6 @@ interface ChatContentProps {
   status: "ready" | "submitted" | "streaming" | "error";
   onQuestionClick: (question: string) => void;
   isAnonymous?: boolean;
-  isAnonymousLimitReached?: boolean;
   anonymousMessageCount?: number;
   anonymousMessageLimit?: number;
 }
@@ -25,7 +24,6 @@ export default function ChatContent({
   status,
   onQuestionClick,
   isAnonymous = false,
-  isAnonymousLimitReached = false,
   anonymousMessageCount,
   anonymousMessageLimit,
 }: ChatContentProps) {
@@ -81,27 +79,6 @@ export default function ChatContent({
 
   return (
     <div className="flex flex-col flex-1 relative">
-      {/* Warning Alert for anonymous limit reached */}
-      {isAnonymous && isAnonymousLimitReached && (
-        <div className="p-4 border-b border-gray-200">
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              You&apos;ve reached your message limit for anonymous usage.{" "}
-              <SignInButton mode="modal">
-                <button
-                  className="underline font-medium hover:text-blue-600 transition-colors"
-                  data-clerk-element="signInButton"
-                >
-                  Sign in
-                </button>
-              </SignInButton>{" "}
-              to continue chatting with unlimited access to all models.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
       {/* Chat Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="w-full max-w-3xl mx-auto px-4 pb-32">
@@ -115,6 +92,7 @@ export default function ChatContent({
           )}
         </div>
       </div>
+      {/* Message Input handled as an overlay in ChatUI */}
     </div>
   );
 }

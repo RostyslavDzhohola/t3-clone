@@ -47,8 +47,22 @@ export default function ChatUI() {
   const [previousUserId, setPreviousUserId] = useState<string | null>(null);
 
   // Anonymous user state
-  const [anonymousMessageCount, setAnonymousMessageCount] = useState(0);
-  const [anonymousAiMessageCount, setAnonymousAiMessageCount] = useState(0);
+  const [anonymousMessageCount, setAnonymousMessageCount] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedCount = localStorage.getItem(ANONYMOUS_STORAGE_KEY);
+      return savedCount ? parseInt(savedCount, 10) : 0;
+    }
+    return 0;
+  });
+
+  const [anonymousAiMessageCount, setAnonymousAiMessageCount] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedAiCount = localStorage.getItem(ANONYMOUS_AI_COUNT_KEY);
+      return savedAiCount ? parseInt(savedAiCount, 10) : 0;
+    }
+    return 0;
+  });
+
   const [bannerClosed, setBannerClosed] = useState(false);
   const [anonymousChats, setAnonymousChats] = useState<LocalStorageChat[]>([]);
   const [currentAnonymousChat, setCurrentAnonymousChat] =
@@ -86,11 +100,25 @@ export default function ChatUI() {
     if (!user) {
       const savedCount = localStorage.getItem(ANONYMOUS_STORAGE_KEY);
       const count = savedCount ? parseInt(savedCount, 10) : 0;
+      console.log(
+        "🔍 Loading anonymous user message count from localStorage:",
+        count
+      );
       setAnonymousMessageCount(count);
 
       const savedAiCount = localStorage.getItem(ANONYMOUS_AI_COUNT_KEY);
       const aiCount = savedAiCount ? parseInt(savedAiCount, 10) : 0;
-      setAnonymousAiMessageCount(aiCount);
+      if (aiCount !== anonymousAiMessageCount) {
+        console.log(
+          "🔍 Updating AI count from localStorage (effect):",
+          aiCount
+        );
+        setAnonymousAiMessageCount(aiCount);
+      }
+      console.log(
+        "🔍 Anonymous messages remaining:",
+        ANONYMOUS_MESSAGE_LIMIT - aiCount
+      );
       setIsAnonymousLimitReached(aiCount >= ANONYMOUS_MESSAGE_LIMIT);
 
       const savedChats = localStorage.getItem(ANONYMOUS_CHATS_KEY);
@@ -125,11 +153,19 @@ export default function ChatUI() {
   // Save anonymous AI message count to localStorage
   useEffect(() => {
     if (!user) {
+      console.log(
+        "💾 Saving anonymous AI count to localStorage:",
+        anonymousAiMessageCount
+      );
       localStorage.setItem(
         ANONYMOUS_AI_COUNT_KEY,
         anonymousAiMessageCount.toString()
       );
       setIsAnonymousLimitReached(
+        anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT
+      );
+      console.log(
+        "🔍 Is limit reached?",
         anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT
       );
     }
@@ -175,6 +211,9 @@ export default function ChatUI() {
         : currentAnonymousChat?.messages.length,
       isCreatingChat,
       anonymousMessageCount,
+      anonymousAiMessageCount,
+      anonymousMessagesRemaining:
+        ANONYMOUS_MESSAGE_LIMIT - anonymousAiMessageCount,
       isAnonymousLimitReached,
     });
   }, [
@@ -186,6 +225,7 @@ export default function ChatUI() {
     anonymousChats,
     currentAnonymousChat,
     anonymousMessageCount,
+    anonymousAiMessageCount,
     isAnonymousLimitReached,
   ]);
 
@@ -203,6 +243,7 @@ export default function ChatUI() {
     body: {
       model: selectedModel.id,
       anonymous: !user,
+      anonymousMessageCount: !user ? anonymousAiMessageCount : undefined,
     },
     onFinish: async (message: Message) => {
       console.log(
@@ -232,7 +273,20 @@ export default function ChatUI() {
       } else if (!user) {
         // Save AI response to localStorage for anonymous users
         // Increment AI message count
-        setAnonymousAiMessageCount((count) => count + 1);
+        console.log("🤖 AI response finished, incrementing anonymous AI count");
+        console.log(
+          "🔍 Current anonymous AI count before increment:",
+          anonymousAiMessageCount
+        );
+        setAnonymousAiMessageCount((count) => {
+          const newCount = count + 1;
+          console.log("🔍 New anonymous AI count after increment:", newCount);
+          console.log(
+            "🔍 Anonymous messages remaining after this response:",
+            ANONYMOUS_MESSAGE_LIMIT - newCount
+          );
+          return newCount;
+        });
 
         // Reset banner closed state so it reappears after AI response
         setBannerClosed(false);
@@ -515,9 +569,8 @@ export default function ChatUI() {
     e.preventDefault();
 
     // Check anonymous message limit (need 2 messages: user + AI)
-    if (!user && isAnonymousLimitReached) {
-      setIsAnonymousLimitReached(true);
-      toast.error("You've reached your rate limit, please try again later.");
+    if (!user && anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT) {
+      toast.error("Sorry, you've reached your rate limit");
       return;
     }
 
@@ -578,9 +631,8 @@ export default function ChatUI() {
     console.log("🤔 Question clicked:", question);
 
     // Check anonymous message limit
-    if (!user && isAnonymousLimitReached) {
-      setIsAnonymousLimitReached(true);
-      toast.error("You've reached your rate limit, please try again later.");
+    if (!user && anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT) {
+      toast.error("Sorry, you've reached your rate limit");
       return;
     }
 
@@ -733,45 +785,54 @@ export default function ChatUI() {
         status={status}
         onQuestionClick={handleQuestionClick}
         isAnonymous={!user}
-        isAnonymousLimitReached={user ? false : isAnonymousLimitReached}
         anonymousMessageCount={user ? undefined : anonymousMessageCount}
         anonymousMessageLimit={user ? undefined : ANONYMOUS_MESSAGE_LIMIT}
       />
 
       {/* Floating Message Input Overlay */}
-      {!(!user && isAnonymousLimitReached) && (
-        <div className="fixed bottom-0 left-56.5 right-0 flex justify-center pt-4 z-40 pointer-events-none ">
-          <div className="w-full max-w-3xl pointer-events-auto">
-            <div className="backdrop-blur-xs border border-gray-200 rounded-t-2xl shadow-lg px-2 pt-2 ">
-              <MessageInput
-                input={input}
-                onInputChange={enhancedInputChange}
-                onKeyDown={handleKeyDown}
-                onSubmit={enhancedSubmit}
-                disabled={status !== "ready"}
-                placeholder={
-                  !user
-                    ? "Type your message here... (Anonymous mode)"
-                    : "Type your message here..."
-                }
-                selectedModel={selectedModel}
-                onModelChange={handleModelChange}
-              />
-            </div>
+      <div className="fixed bottom-0 left-56.5 right-0 flex justify-center pt-4 z-40 pointer-events-none ">
+        <div className="w-full max-w-3xl pointer-events-auto">
+          <div className="backdrop-blur-xs border border-gray-200 rounded-t-2xl shadow-lg px-2 pt-2 ">
+            <MessageInput
+              input={input}
+              onInputChange={enhancedInputChange}
+              onKeyDown={handleKeyDown}
+              onSubmit={enhancedSubmit}
+              disabled={status !== "ready"}
+              placeholder={
+                !user
+                  ? "Type your message here... (Anonymous mode)"
+                  : "Type your message here..."
+              }
+              selectedModel={selectedModel}
+              onModelChange={handleModelChange}
+            />
           </div>
         </div>
-      )}
+      </div>
 
       {!user && !bannerClosed && (
         <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50">
-          <RemainingLimitBanner
-            remaining={Math.max(
+          {(() => {
+            const remaining = Math.max(
               0,
               ANONYMOUS_MESSAGE_LIMIT - anonymousAiMessageCount
-            )}
-            limitReached={isAnonymousLimitReached}
-            onClose={() => setBannerClosed(true)}
-          />
+            );
+            console.log("🏷️ Banner calculation:", {
+              ANONYMOUS_MESSAGE_LIMIT,
+              anonymousAiMessageCount,
+              remaining,
+              isAnonymousLimitReached,
+              bannerClosed,
+            });
+            return (
+              <RemainingLimitBanner
+                remaining={remaining}
+                limitReached={isAnonymousLimitReached}
+                onClose={() => setBannerClosed(true)}
+              />
+            );
+          })()}
         </div>
       )}
     </div>

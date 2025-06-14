@@ -12,23 +12,39 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY!,
 });
 
+const ANONYMOUS_MESSAGE_LIMIT = 10;
+
 export async function POST(req: Request) {
   try {
     // Parse and validate request body
     let messages: CoreMessage[];
     let selectedModelId: string | undefined;
     let isAnonymous: boolean = false;
+    let anonymousMessageCount: number = 0;
 
     try {
       const body = await req.json();
       messages = body.messages;
       selectedModelId = body.model;
       isAnonymous = body.anonymous === true;
+      anonymousMessageCount = body.anonymousMessageCount || 0;
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 }
       );
+    }
+
+    // Check anonymous message limit using the total count from client
+    if (isAnonymous) {
+      // The client sends the total anonymous message count from localStorage
+      // This includes all messages across all chats and sessions
+      if (anonymousMessageCount >= ANONYMOUS_MESSAGE_LIMIT) {
+        return NextResponse.json(
+          { error: "Sorry, you've reached your rate limit" },
+          { status: 429 }
+        );
+      }
     }
 
     // Use selected model or fallback to default
