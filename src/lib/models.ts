@@ -30,7 +30,7 @@ export const AVAILABLE_MODELS: LLMModel[] = [
     id: "openai/gpt-4o",
     name: "GPT-4o",
     provider: "OpenAI",
-    available: false,
+    available: true,
   },
   {
     id: "openai/gpt-4.1",

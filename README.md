@@ -240,3 +240,111 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - [DataFast Next.js Proxy Implementation](https://datafa.st/docs/nextjs-proxy)
 - [Plausible Analytics Proxy Guide](https://plausible.io/docs/proxy/introduction)
 - [Vercel Edge Network and Rewrites](https://vercel.com/docs/edge-network/rewrites)
+
+---
+
+### ⚡ Performance & Optimization
+
+#### **Lesson 10: Main Thread Blocking & React Performance**
+
+**Overarching Question:** _"What causes main thread blocking in React applications during streaming, and how can you optimize performance while maintaining real-time UI updates?"_
+
+**Concept:** Main thread blocking occurs when JavaScript execution saturates the browser's single main thread, preventing user interactions. During AI streaming, rapid React re-renders combined with expensive operations like syntax highlighting can freeze the UI.
+
+**Key Learning Points:**
+
+- JavaScript's single-threaded nature and the event loop
+- How React re-renders work and when they become expensive
+- The performance cost of syntax highlighting during streaming
+- Throttling techniques to batch UI updates
+- React optimization patterns (React.memo, useMemo, useCallback)
+- Trading off real-time features for UI responsiveness
+
+**What's Actually Happening:**
+
+- JavaScript runs on one main thread that handles both UI updates and user interactions
+- Streaming tokens trigger continuous React re-renders (500-1000 per second)
+- Each re-render processes markdown and runs expensive Prism syntax highlighting
+- Continuous expensive operations saturate the main thread
+- User interactions (clicks, scrolls, text selection) get queued but can't be processed
+- Browser shows "Page Unresponsive" dialog when main thread is blocked too long
+
+**Solution Strategies:**
+
+- **Throttling:** Batch updates every 150ms instead of on every token
+- **Deferred Syntax Highlighting:** Show plain code during streaming, apply Prism when complete
+- **React.memo:** Prevent unnecessary re-renders of completed messages
+- **Memoized Components:** Avoid recreating component functions on every render
+
+**Resources:**
+
+- [React Re-render Optimization - Medium Article](https://medium.com/@gethylgeorge/how-react-re-renders-work-and-how-to-optimize-them-5c1d8b8b3c8f)
+- [React Legacy Docs - Optimizing Performance](https://legacy.reactjs.org/docs/optimizing-performance.html)
+- [JavaScript Event Loop - MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/EventLoop)
+- [React Profiler - Official Documentation](https://react.dev/reference/react/Profiler)
+- [Web Performance Fundamentals - Google](https://developers.google.com/web/fundamentals/performance)
+
+---
+
+#### **Lesson 11: React.memo & Component Memoization Patterns**
+
+**Overarching Question:** _"How do React.memo, useMemo, and custom equality functions prevent unnecessary re-renders in streaming applications, and when should you use each optimization technique?"_
+
+**Concept:** React.memo is a higher-order component that memoizes the result of a component, preventing re-renders when props haven't changed. Combined with useMemo and custom equality functions, it creates a powerful optimization strategy for performance-critical applications.
+
+**Key Learning Points:**
+
+- **React.memo Fundamentals:** How React.memo wraps components to prevent re-renders
+- **Custom Equality Functions:** Writing custom comparison logic for complex props
+- **useMemo for Expensive Computations:** Memoizing heavy operations like markdown parsing
+- **Component Architecture for Performance:** Structuring components to maximize memoization benefits
+- **Shallow vs Deep Comparison:** Understanding when default shallow comparison fails
+- **Debugging Memoization:** Using React DevTools to verify optimization effectiveness
+
+**Real-World Implementation:**
+
+```typescript
+// Memoized component with custom equality check
+const MessageBubble = React.memo(
+  function MessageBubble({ message, isStreaming }) {
+    // Component logic here
+  },
+  (prev, next) =>
+    prev.message.content === next.message.content &&
+    prev.isStreaming === next.isStreaming
+);
+
+// Memoized expensive computation
+const markdown = useMemo(
+  () => <ReactMarkdown>{content}</ReactMarkdown>,
+  [content, isStreaming]
+);
+```
+
+**When to Use Each Pattern:**
+
+- **React.memo:** For components that receive the same props frequently
+- **useMemo:** For expensive computations (parsing, filtering, sorting)
+- **useCallback:** For functions passed as props to memoized components
+- **Custom Equality:** When props contain objects or arrays that change reference but not content
+
+**Common Pitfalls:**
+
+- Over-memoizing simple components (performance overhead)
+- Forgetting to memoize callback functions passed to memoized components
+- Using object/array literals in JSX (breaks memoization)
+- Not understanding when React's default shallow comparison fails
+
+**Performance Impact in Our Streaming Chat:**
+
+- **Before:** Every token caused all messages to re-render (exponential performance degradation)
+- **After:** Only the actively streaming message re-renders, completed messages stay frozen
+- **Result:** UI remains responsive even with 100+ messages and slow AI models
+
+**Resources:**
+
+- [React.memo Official Documentation](https://react.dev/reference/react/memo)
+- [useMemo Hook Guide](https://react.dev/reference/react/useMemo)
+- [React Performance Optimization Patterns](https://kentcdodds.com/blog/optimize-react-re-renders)
+- [When to useMemo and useCallback](https://kentcdodds.com/blog/usememo-and-usecallback)
+- [React DevTools Profiler Tutorial](https://react.dev/learn/react-developer-tools#profiler)

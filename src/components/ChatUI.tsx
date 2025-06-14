@@ -200,22 +200,26 @@ export default function ChatUI() {
       : "skip"
   );
 
-  // Debug logging
+  // Debug logging (throttled to prevent main thread blocking)
   useEffect(() => {
-    console.log("🔍 Debug Info:", {
-      user: user?.id,
-      currentChatId,
-      chatsCount: user ? chats?.length : anonymousChats.length,
-      messagesCount: user
-        ? currentChatMessages?.length
-        : currentAnonymousChat?.messages.length,
-      isCreatingChat,
-      anonymousMessageCount,
-      anonymousAiMessageCount,
-      anonymousMessagesRemaining:
-        ANONYMOUS_MESSAGE_LIMIT - anonymousAiMessageCount,
-      isAnonymousLimitReached,
-    });
+    const timeoutId = setTimeout(() => {
+      console.log("🔍 Debug Info:", {
+        user: user?.id,
+        currentChatId,
+        chatsCount: user ? chats?.length : anonymousChats.length,
+        messagesCount: user
+          ? currentChatMessages?.length
+          : currentAnonymousChat?.messages.length,
+        isCreatingChat,
+        anonymousMessageCount,
+        anonymousAiMessageCount,
+        anonymousMessagesRemaining:
+          ANONYMOUS_MESSAGE_LIMIT - anonymousAiMessageCount,
+        isAnonymousLimitReached,
+      });
+    }, 500); // Throttle debug logging
+
+    return () => clearTimeout(timeoutId);
   }, [
     user,
     currentChatId,
