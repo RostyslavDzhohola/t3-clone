@@ -138,7 +138,7 @@ export default function ChatUI() {
         }
       }
     }
-  }, [user]);
+  }, [user, anonymousAiMessageCount]);
 
   // Save anonymous message count to localStorage
   useEffect(() => {
