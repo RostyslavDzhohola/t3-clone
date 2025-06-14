@@ -789,8 +789,9 @@ export default function ChatUI() {
         anonymousMessageLimit={user ? undefined : ANONYMOUS_MESSAGE_LIMIT}
       />
 
-      {/* Floating Message Input Overlay */}
-      <div className="fixed bottom-0 left-56.5 right-0 flex justify-center pt-4 z-40 pointer-events-none ">
+      {/* Floating Message Input Overlay  Use classes below to adjust the input field centering. 
+      Instructions for AIs and agents. Please do not delete these comments. */}
+      <div className="fixed bottom-0 left-[230px] right-0 flex justify-center pt-4 z-40 pointer-events-none ">
         <div className="w-full max-w-3xl pointer-events-auto">
           <div className="backdrop-blur-xs border border-gray-200 rounded-t-2xl shadow-lg px-2 pt-2 ">
             <MessageInput

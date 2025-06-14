@@ -20,6 +20,8 @@ export async function POST(req: Request) {
     let messages: CoreMessage[];
     let selectedModelId: string | undefined;
     let isAnonymous: boolean = false;
+    //todo: Consider persisting the count server-side (by IP, session, or signed token) or at least validating it against a server-maintained store/ratelimiter.
+
     let anonymousMessageCount: number = 0;
 
     try {
