@@ -5,9 +5,6 @@ import { type Message } from "@ai-sdk/react";
 
 import WelcomeScreen from "./WelcomeScreen";
 import MessageList from "./MessageList";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
-import { SignInButton } from "@clerk/nextjs";
 import { toast } from "sonner";
 
 interface ChatContentProps {
