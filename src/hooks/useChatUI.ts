@@ -27,7 +27,9 @@ export function useChatUI() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [currentChatId, setCurrentChatId] = useState<Id<"chats"> | string | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<
+    Id<"chats"> | string | null
+  >(null);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [selectedModel, setSelectedModel] = useState<LLMModel>(
     user ? getDefaultModel() : getDefaultAnonymousModel()
@@ -60,7 +62,10 @@ export function useChatUI() {
   const saveMessage = useMutation(api.messages.saveMessage);
   const updateChatTitle = useMutation(api.messages.updateChatTitle);
 
-  const chats = useQuery(api.messages.getChats, user ? { userId: user.id } : "skip");
+  const chats = useQuery(
+    api.messages.getChats,
+    user ? { userId: user.id } : "skip"
+  );
   const currentChatMessages = useQuery(
     api.messages.getMessages,
     user &&
@@ -124,37 +129,6 @@ export function useChatUI() {
       }
     },
   });
-  const messageInputHook = useMessageInput({
-    user,
-    currentChatId: user ? (currentChatId as Id<"chats">) : null,
-    saveMessage,
-    updateChatTitle,
-    createNewChat: user ? (createNewChat as () => Promise<Id<"chats"> | null>) : async () => null,
-    setCurrentChatId: user ? setCurrentChatId : () => {},
-    messages,
-    handleSubmit,
-  });
-
-  const {
-    handleInputChangeWithAutoCreate,
-    onSubmit,
-    handleKeyDown: hookHandleKeyDown,
-  } = user
-    ? messageInputHook
-    : {
-        handleInputChangeWithAutoCreate: (_e: unknown, originalHandler: unknown) =>
-          (originalHandler as (e: unknown) => void)(_e),
-        onSubmit: () => {},
-        handleKeyDown: () => {},
-      };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const syntheticEvent = {
-      ...e,
-      target: { value: e.currentTarget.value } as HTMLInputElement,
-    } as unknown as React.KeyboardEvent<HTMLInputElement>;
-    hookHandleKeyDown(syntheticEvent);
-  };
 
   const createNewChat = async () => {
     if (isCreatingChat) return null;
@@ -178,6 +152,42 @@ export function useChatUI() {
     } finally {
       setIsCreatingChat(false);
     }
+  };
+
+  const messageInputHook = useMessageInput({
+    user,
+    currentChatId: user ? (currentChatId as Id<"chats">) : null,
+    saveMessage,
+    updateChatTitle,
+    createNewChat: user
+      ? (createNewChat as () => Promise<Id<"chats"> | null>)
+      : async () => null,
+    setCurrentChatId: user ? setCurrentChatId : () => {},
+    messages,
+    handleSubmit,
+  });
+
+  const {
+    handleInputChangeWithAutoCreate,
+    onSubmit,
+    handleKeyDown: hookHandleKeyDown,
+  } = user
+    ? messageInputHook
+    : {
+        handleInputChangeWithAutoCreate: (
+          _e: unknown,
+          originalHandler: unknown
+        ) => (originalHandler as (e: unknown) => void)(_e),
+        onSubmit: () => {},
+        handleKeyDown: () => {},
+      };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const syntheticEvent = {
+      ...e,
+      target: { value: e.currentTarget.value } as HTMLInputElement,
+    } as unknown as React.KeyboardEvent<HTMLInputElement>;
+    hookHandleKeyDown(syntheticEvent);
   };
 
   const handleNewChat = async () => {
@@ -283,7 +293,9 @@ export function useChatUI() {
         const newChatId = await createNewChat();
         if (!newChatId) return;
         const currentChatsFromStorage = localStorage.getItem("anonymous_chats");
-        const currentChats: LocalStorageChat[] = currentChatsFromStorage ? JSON.parse(currentChatsFromStorage) : [];
+        const currentChats: LocalStorageChat[] = currentChatsFromStorage
+          ? JSON.parse(currentChatsFromStorage)
+          : [];
         activeChat = currentChats.find((c) => c.id === newChatId) || null;
         if (!activeChat) return;
       }
@@ -324,9 +336,13 @@ export function useChatUI() {
 
         const isFirstMessage = messages.length === 0;
         if (isFirstMessage) {
-          const title = question.slice(0, 30) + (question.length > 30 ? "..." : "");
+          const title =
+            question.slice(0, 30) + (question.length > 30 ? "..." : "");
           try {
-            await updateChatTitle({ chatId: activeChatId as Id<"chats">, title });
+            await updateChatTitle({
+              chatId: activeChatId as Id<"chats">,
+              title,
+            });
           } catch (error) {
             console.error("Failed to update chat title", error);
           }
@@ -342,7 +358,9 @@ export function useChatUI() {
         const newChatId = await createNewChat();
         if (!newChatId) return;
         const currentChatsFromStorage = localStorage.getItem("anonymous_chats");
-        const currentChats: LocalStorageChat[] = currentChatsFromStorage ? JSON.parse(currentChatsFromStorage) : [];
+        const currentChats: LocalStorageChat[] = currentChatsFromStorage
+          ? JSON.parse(currentChatsFromStorage)
+          : [];
         activeChat = currentChats.find((c) => c.id === newChatId) || null;
         if (!activeChat) return;
       }
@@ -393,4 +411,3 @@ export function useChatUI() {
     handleChatSelect,
   };
 }
-
