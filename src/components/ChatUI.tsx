@@ -14,6 +14,18 @@ import {
   getDefaultAnonymousModel,
   type LLMModel,
 } from "@/lib/models";
+import {
+  generateChatTitle,
+  createUserMessage,
+  generateAnonymousChatId,
+  ANONYMOUS_STORAGE_KEYS,
+  isAnonymousLimitReached as checkAnonymousLimitReached,
+  getNumberFromStorage,
+  setNumberInStorage,
+  getObjectFromStorage,
+  setObjectInStorage,
+  clearAnonymousData,
+} from "@/lib/chatHelpers";
 import Sidebar from "./Sidebar";
 import ChatContent from "./ChatContent";
 import MessageInput from "./MessageInput";
@@ -29,10 +41,6 @@ interface LocalStorageChat {
 }
 
 const ANONYMOUS_MESSAGE_LIMIT = 10;
-const ANONYMOUS_STORAGE_KEY = "anonymous_message_count";
-const ANONYMOUS_AI_COUNT_KEY = "anonymous_ai_message_count";
-const ANONYMOUS_CHATS_KEY = "anonymous_chats";
-const ANONYMOUS_CURRENT_CHAT_KEY = "anonymous_current_chat";
 
 export default function ChatUI() {
   const { user } = useUser();
@@ -46,19 +54,11 @@ export default function ChatUI() {
 
   // Anonymous user state
   const [anonymousMessageCount, setAnonymousMessageCount] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedCount = localStorage.getItem(ANONYMOUS_STORAGE_KEY);
-      return savedCount ? parseInt(savedCount, 10) : 0;
-    }
-    return 0;
+    return getNumberFromStorage(ANONYMOUS_STORAGE_KEYS.MESSAGE_COUNT, 0);
   });
 
   const [anonymousAiMessageCount, setAnonymousAiMessageCount] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedAiCount = localStorage.getItem(ANONYMOUS_AI_COUNT_KEY);
-      return savedAiCount ? parseInt(savedAiCount, 10) : 0;
-    }
-    return 0;
+    return getNumberFromStorage(ANONYMOUS_STORAGE_KEYS.AI_COUNT, 0);
   });
 
   const [bannerClosed, setBannerClosed] = useState(false);
@@ -68,12 +68,9 @@ export default function ChatUI() {
   const [isAnonymousLimitReached, setIsAnonymousLimitReached] = useState(false);
 
   // Helper function to clear anonymous data
-  const clearAnonymousData = () => {
+  const handleClearAnonymousData = () => {
     console.log("🧹 Clearing anonymous data from localStorage");
-    localStorage.removeItem(ANONYMOUS_STORAGE_KEY);
-    localStorage.removeItem(ANONYMOUS_AI_COUNT_KEY);
-    localStorage.removeItem(ANONYMOUS_CHATS_KEY);
-    localStorage.removeItem(ANONYMOUS_CURRENT_CHAT_KEY);
+    clearAnonymousData();
     setAnonymousMessageCount(0);
     setAnonymousAiMessageCount(0);
     setBannerClosed(false);
@@ -88,7 +85,7 @@ export default function ChatUI() {
     if (previousUserId && !user) {
       // User has signed out
       console.log("👋 User signed out, clearing anonymous data");
-      clearAnonymousData();
+      handleClearAnonymousData();
     }
     setPreviousUserId(user?.id || null);
   }, [user, previousUserId]);
@@ -96,16 +93,17 @@ export default function ChatUI() {
   // Load anonymous data from localStorage
   useEffect(() => {
     if (!user) {
-      const savedCount = localStorage.getItem(ANONYMOUS_STORAGE_KEY);
-      const count = savedCount ? parseInt(savedCount, 10) : 0;
+      const count = getNumberFromStorage(
+        ANONYMOUS_STORAGE_KEYS.MESSAGE_COUNT,
+        0
+      );
       console.log(
         "🔍 Loading anonymous user message count from localStorage:",
         count
       );
       setAnonymousMessageCount(count);
 
-      const savedAiCount = localStorage.getItem(ANONYMOUS_AI_COUNT_KEY);
-      const aiCount = savedAiCount ? parseInt(savedAiCount, 10) : 0;
+      const aiCount = getNumberFromStorage(ANONYMOUS_STORAGE_KEYS.AI_COUNT, 0);
       if (aiCount !== anonymousAiMessageCount) {
         console.log(
           "🔍 Updating AI count from localStorage (effect):",
@@ -117,14 +115,18 @@ export default function ChatUI() {
         "🔍 Anonymous messages remaining:",
         ANONYMOUS_MESSAGE_LIMIT - aiCount
       );
-      setIsAnonymousLimitReached(aiCount >= ANONYMOUS_MESSAGE_LIMIT);
+      setIsAnonymousLimitReached(
+        checkAnonymousLimitReached(aiCount, ANONYMOUS_MESSAGE_LIMIT)
+      );
 
-      const savedChats = localStorage.getItem(ANONYMOUS_CHATS_KEY);
-      const chats = savedChats ? JSON.parse(savedChats) : [];
+      const chats = getObjectFromStorage<LocalStorageChat[]>(
+        ANONYMOUS_STORAGE_KEYS.CHATS,
+        []
+      );
       setAnonymousChats(chats);
 
       const savedCurrentChatId = localStorage.getItem(
-        ANONYMOUS_CURRENT_CHAT_KEY
+        ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT
       );
       if (savedCurrentChatId && chats.length > 0) {
         const currentChat = chats.find(
@@ -141,9 +143,9 @@ export default function ChatUI() {
   // Save anonymous message count to localStorage
   useEffect(() => {
     if (!user) {
-      localStorage.setItem(
-        ANONYMOUS_STORAGE_KEY,
-        anonymousMessageCount.toString()
+      setNumberInStorage(
+        ANONYMOUS_STORAGE_KEYS.MESSAGE_COUNT,
+        anonymousMessageCount
       );
     }
   }, [anonymousMessageCount, user]);
@@ -155,16 +157,22 @@ export default function ChatUI() {
         "💾 Saving anonymous AI count to localStorage:",
         anonymousAiMessageCount
       );
-      localStorage.setItem(
-        ANONYMOUS_AI_COUNT_KEY,
-        anonymousAiMessageCount.toString()
+      setNumberInStorage(
+        ANONYMOUS_STORAGE_KEYS.AI_COUNT,
+        anonymousAiMessageCount
       );
       setIsAnonymousLimitReached(
-        anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT
+        checkAnonymousLimitReached(
+          anonymousAiMessageCount,
+          ANONYMOUS_MESSAGE_LIMIT
+        )
       );
       console.log(
         "🔍 Is limit reached?",
-        anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT
+        checkAnonymousLimitReached(
+          anonymousAiMessageCount,
+          ANONYMOUS_MESSAGE_LIMIT
+        )
       );
     }
   }, [anonymousAiMessageCount, user]);
@@ -308,10 +316,7 @@ export default function ChatUI() {
             const updatedChats = prevChats.map((chat) =>
               chat.id === prevChat.id ? updatedChat : chat
             );
-            localStorage.setItem(
-              ANONYMOUS_CHATS_KEY,
-              JSON.stringify(updatedChats)
-            );
+            setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
             return updatedChats;
           });
 
@@ -349,20 +354,17 @@ export default function ChatUI() {
 
       // Update chat title if this is the first message
       if (chatToUpdate.messages.length === 0) {
-        const title =
-          userMessage.content.slice(0, 30) +
-          (userMessage.content.length > 30 ? "..." : "");
-        updatedChat.title = title;
+        updatedChat.title = generateChatTitle(userMessage.content);
       }
 
       // Update current chat state first
       setCurrentAnonymousChat(updatedChat);
 
       // Get the most current chats from localStorage to avoid stale state
-      const currentChatsFromStorage = localStorage.getItem(ANONYMOUS_CHATS_KEY);
-      const currentChats: LocalStorageChat[] = currentChatsFromStorage
-        ? JSON.parse(currentChatsFromStorage)
-        : [];
+      const currentChats = getObjectFromStorage<LocalStorageChat[]>(
+        ANONYMOUS_STORAGE_KEYS.CHATS,
+        []
+      );
 
       // Update the specific chat in the array
       const updatedChats = currentChats.map((chat) =>
@@ -378,7 +380,7 @@ export default function ChatUI() {
       }
 
       // Save to localStorage
-      localStorage.setItem(ANONYMOUS_CHATS_KEY, JSON.stringify(updatedChats));
+      setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
 
       // Update the React state
       setAnonymousChats(updatedChats);
@@ -416,9 +418,7 @@ export default function ChatUI() {
         return chatId;
       } else {
         // Anonymous user - use localStorage
-        const newChatId = `anon_${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`;
+        const newChatId = generateAnonymousChatId();
         const newChat: LocalStorageChat = {
           id: newChatId,
           title: "New Chat",
@@ -433,8 +433,8 @@ export default function ChatUI() {
         setMessages([]);
 
         // Save to localStorage
-        localStorage.setItem(ANONYMOUS_CHATS_KEY, JSON.stringify(updatedChats));
-        localStorage.setItem(ANONYMOUS_CURRENT_CHAT_KEY, newChatId);
+        setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
+        localStorage.setItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT, newChatId);
 
         console.log("✅ Anonymous chat created with ID:", newChatId);
         return newChatId;
@@ -565,11 +565,10 @@ export default function ChatUI() {
           return;
         }
         // Re-fetch the active chat after creation
-        const currentChatsFromStorage =
-          localStorage.getItem(ANONYMOUS_CHATS_KEY);
-        const currentChats: LocalStorageChat[] = currentChatsFromStorage
-          ? JSON.parse(currentChatsFromStorage)
-          : [];
+        const currentChats = getObjectFromStorage<LocalStorageChat[]>(
+          ANONYMOUS_STORAGE_KEYS.CHATS,
+          []
+        );
         activeChat = currentChats.find((c) => c.id === newChatId) || null;
         if (!activeChat) {
           console.error("❌ Failed to find newly created chat");
@@ -578,12 +577,7 @@ export default function ChatUI() {
       }
 
       // Create user message
-      const userMessage: Message = {
-        id: `${Date.now()}_user`,
-        role: "user",
-        content: input,
-        createdAt: new Date(),
-      };
+      const userMessage = createUserMessage(input);
 
       // Save user message to localStorage immediately BEFORE calling append
       saveUserMessageToLocalStorage(userMessage, activeChat);
@@ -686,3 +680,4 @@ export default function ChatUI() {
     </div>
   );
 }
+// 683 lines of code compare after refactoring

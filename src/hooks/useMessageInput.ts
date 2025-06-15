@@ -1,5 +1,6 @@
 import { type Message } from "@ai-sdk/react";
 import { Id } from "../../convex/_generated/dataModel";
+import { generateChatTitle } from "@/lib/chatHelpers";
 
 interface UseMessageInputProps {
   user: { id: string } | null | undefined;
@@ -52,8 +53,7 @@ export function useMessageInput({
     chatId: Id<"chats">,
     firstMessage: string
   ) => {
-    const title =
-      firstMessage.slice(0, 30) + (firstMessage.length > 30 ? "..." : "");
+    const title = generateChatTitle(firstMessage);
     try {
       console.log("🏷️ Updating chat title to:", title);
       await updateChatTitle({
