@@ -7,8 +7,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useEffect, useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
-import { useRouter, usePathname } from "next/navigation";
-import { useMessageInput } from "../hooks";
+import { useRouter } from "next/navigation";
+import { useMessageInput, useChatNavigation } from "../hooks";
 import {
   getDefaultModel,
   getDefaultAnonymousModel,
@@ -18,6 +18,7 @@ import Sidebar from "./Sidebar";
 import ChatContent from "./ChatContent";
 import MessageInput from "./MessageInput";
 import RemainingLimitBanner from "./RemainingLimitBanner";
+import DataFastWidget from "./DataFastWidget";
 import { toast } from "sonner";
 
 interface LocalStorageChat {
@@ -36,10 +37,7 @@ const ANONYMOUS_CURRENT_CHAT_KEY = "anonymous_current_chat";
 export default function ChatUI() {
   const { user } = useUser();
   const router = useRouter();
-  const pathname = usePathname();
-  const [currentChatId, setCurrentChatId] = useState<
-    Id<"chats"> | string | null
-  >(null);
+
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [selectedModel, setSelectedModel] = useState<LLMModel>(
     user ? getDefaultModel() : getDefaultAnonymousModel()
@@ -189,6 +187,12 @@ export default function ChatUI() {
     api.messages.getChats,
     user ? { userId: user.id } : "skip"
   );
+
+  // Temporary currentChatId state
+  const [currentChatId, setCurrentChatId] = useState<
+    Id<"chats"> | string | null
+  >(null);
+
   const currentChatMessages = useQuery(
     api.messages.getMessages,
     user &&
@@ -317,6 +321,22 @@ export default function ChatUI() {
       }
     },
   });
+
+  // Chat navigation hook
+  const navigation = useChatNavigation({
+    user,
+    chats,
+    anonymousChats,
+    setMessages,
+    setCurrentAnonymousChat,
+  });
+
+  // Update currentChatId from navigation hook
+  useEffect(() => {
+    if (navigation.currentChatId !== currentChatId) {
+      setCurrentChatId(navigation.currentChatId);
+    }
+  }, [navigation.currentChatId, currentChatId]);
 
   // Helper function to save user message to localStorage for anonymous users
   const saveUserMessageToLocalStorage = (
@@ -468,25 +488,6 @@ export default function ChatUI() {
     await createNewChat();
   };
 
-  // Switch to a different chat
-  const handleChatSelect = (chatId: Id<"chats"> | string) => {
-    console.log("🔄 Switching to chat:", chatId);
-
-    if (user && typeof chatId === "string" && chatId.length > 10) {
-      // Authenticated user with Convex chat
-      setCurrentChatId(chatId as Id<"chats">);
-      router.push(`/chat/${chatId}`);
-    } else if (!user && typeof chatId === "string") {
-      // Anonymous user with localStorage chat
-      const chat = anonymousChats.find((c) => c.id === chatId);
-      if (chat) {
-        setCurrentAnonymousChat(chat);
-        setCurrentChatId(chatId);
-        localStorage.setItem(ANONYMOUS_CURRENT_CHAT_KEY, chatId);
-      }
-    }
-  };
-
   // Load messages when current chat changes
   useEffect(() => {
     if (user && currentChatMessages) {
@@ -511,35 +512,6 @@ export default function ChatUI() {
       setMessages([]);
     }
   }, [user, currentChatMessages, currentAnonymousChat, setMessages]);
-
-  // Auto-select first chat if none selected and we're on the home page
-  useEffect(() => {
-    if (pathname === "/" && !currentChatId) {
-      if (user && chats && chats.length > 0) {
-        const firstChat = chats[0];
-        console.log("🏠 Auto-selecting first chat:", firstChat._id);
-        setCurrentChatId(firstChat._id);
-        router.push(`/chat/${firstChat._id}`);
-      } else if (!user && anonymousChats.length > 0) {
-        const firstChat = anonymousChats[0];
-        console.log("🏠 Auto-selecting first anonymous chat:", firstChat.id);
-        setCurrentAnonymousChat(firstChat);
-        setCurrentChatId(firstChat.id);
-        localStorage.setItem(ANONYMOUS_CURRENT_CHAT_KEY, firstChat.id);
-      }
-    }
-  }, [user, chats, anonymousChats, currentChatId, pathname, router]);
-
-  // Extract chat ID from URL if we're on a chat page (only for authenticated users)
-  useEffect(() => {
-    if (user && pathname.startsWith("/chat/")) {
-      const chatIdFromUrl = pathname.split("/chat/")[1];
-      if (chatIdFromUrl && chatIdFromUrl !== currentChatId) {
-        console.log("🔗 Setting chat ID from URL:", chatIdFromUrl);
-        setCurrentChatId(chatIdFromUrl as Id<"chats">);
-      }
-    }
-  }, [user, pathname, currentChatId]);
 
   // Create enhanced input change handler
   const enhancedInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -646,38 +618,14 @@ export default function ChatUI() {
 
   return (
     <div className="flex h-screen w-full bg-gray-50 relative">
-      {/* DataFast Widget - top right corner */}
-      <a
-        href="https://datafa.st/share/684a2754569da665c6b838ca?realtime=1"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute top-1 right-4 z-50 w-fit h-6 p-0 m-0 overflow-hidden rounded-sm bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
-        title="View DataFast Analytics Dashboard"
-      >
-        <iframe
-          src="https://datafa.st/widgets/684a2754569da665c6b838ca/realtime?mainTextSize=10&primaryColor=%233cda10&theme=light"
-          style={{
-            background: "transparent",
-            border: "none",
-            width: "200px",
-            height: "24px",
-            margin: "1px -10px",
-            padding: "0",
-            transform: "scale(1.1)",
-            transformOrigin: "center",
-            pointerEvents: "none",
-          }}
-          title="DataFast Widget"
-          loading="lazy"
-        />
-      </a>
+      <DataFastWidget />
       <Sidebar
         user={user}
         chats={sidebarChats}
         currentChatId={currentChatId}
         isCreatingChat={isCreatingChat}
         onNewChat={handleNewChat}
-        onChatSelect={handleChatSelect}
+        onChatSelect={navigation.handleChatSelect}
         isAnonymousLimitReached={user ? undefined : isAnonymousLimitReached}
       />
       <ChatContent
