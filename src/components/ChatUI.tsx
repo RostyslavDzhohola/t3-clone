@@ -458,11 +458,8 @@ export default function ChatUI() {
 
   // Create enhanced key down handler for textarea
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const syntheticEvent = {
-      ...e,
-      target: { value: e.currentTarget.value } as HTMLInputElement,
-    } as unknown as React.KeyboardEvent<HTMLInputElement>;
-    hookHandleKeyDown(syntheticEvent);
+    // Pass the textarea event directly - the hook now accepts both input and textarea events
+    hookHandleKeyDown(e);
   };
 
   // Handle New Chat button
@@ -630,106 +627,6 @@ export default function ChatUI() {
     }
   };
 
-  // Handle question click from WelcomeScreen
-  const handleQuestionClick = async (question: string) => {
-    console.log("🤔 Question clicked:", question);
-
-    // Check anonymous message limit
-    if (!user && anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT) {
-      toast.error("Sorry, you've reached your rate limit");
-      return;
-    }
-
-    if (user) {
-      // Authenticated user logic (existing)
-      let activeChatId = currentChatId;
-      if (!activeChatId) {
-        console.log("🆕 No active chat, creating one for question");
-        activeChatId = await createNewChat();
-        if (!activeChatId) {
-          console.error("❌ Failed to create chat for question");
-          return;
-        }
-      }
-
-      try {
-        // First, save the user message to Convex
-        console.log("💾 Saving user question to Convex...");
-        const messageId = await saveMessage({
-          chatId: activeChatId as Id<"chats">,
-          userId: user.id,
-          role: "user",
-          body: question,
-        });
-        console.log("✅ User question saved with ID:", messageId);
-
-        // Update chat title if this is the first message
-        const isFirstMessage = messages.length === 0;
-        if (isFirstMessage) {
-          const title =
-            question.slice(0, 30) + (question.length > 30 ? "..." : "");
-          try {
-            console.log("🏷️ Updating chat title to:", title);
-            await updateChatTitle({
-              chatId: activeChatId as Id<"chats">,
-              title,
-            });
-            console.log("✅ Chat title updated");
-          } catch (error) {
-            console.error("❌ Failed to update chat title:", error);
-          }
-        }
-
-        // Then, use append to send the question and trigger AI response
-        await append({
-          role: "user",
-          content: question,
-        });
-      } catch (error) {
-        console.error("❌ Failed to process question:", error);
-      }
-    } else {
-      // Anonymous user logic
-      let activeChat = currentAnonymousChat;
-      if (!activeChat) {
-        console.log("🆕 No active anonymous chat, creating one for question");
-        const newChatId = await createNewChat();
-        if (!newChatId) {
-          console.error("❌ Failed to create anonymous chat for question");
-          return;
-        }
-        // Re-fetch the active chat after creation
-        const currentChatsFromStorage =
-          localStorage.getItem(ANONYMOUS_CHATS_KEY);
-        const currentChats: LocalStorageChat[] = currentChatsFromStorage
-          ? JSON.parse(currentChatsFromStorage)
-          : [];
-        activeChat = currentChats.find((c) => c.id === newChatId) || null;
-        if (!activeChat) {
-          console.error("❌ Failed to find newly created chat for question");
-          return;
-        }
-      }
-
-      // Create user message for the question
-      const userMessage: Message = {
-        id: `${Date.now()}_user`,
-        role: "user",
-        content: question,
-        createdAt: new Date(),
-      };
-
-      // Save user message to localStorage immediately BEFORE calling append
-      saveUserMessageToLocalStorage(userMessage, activeChat);
-
-      // Send to AI
-      await append({
-        role: "user",
-        content: question,
-      });
-    }
-  };
-
   // Handle model change (restrict for anonymous users)
   const handleModelChange = (model: LLMModel) => {
     if (!user && model.id !== getDefaultAnonymousModel().id) {
@@ -770,7 +667,6 @@ export default function ChatUI() {
             transformOrigin: "center",
             pointerEvents: "none",
           }}
-          allowTransparency={true}
           title="DataFast Widget"
           loading="lazy"
         />
@@ -787,7 +683,6 @@ export default function ChatUI() {
       <ChatContent
         messages={messages}
         status={status}
-        onQuestionClick={handleQuestionClick}
         isAnonymous={!user}
         anonymousMessageCount={user ? undefined : anonymousMessageCount}
         anonymousMessageLimit={user ? undefined : ANONYMOUS_MESSAGE_LIMIT}

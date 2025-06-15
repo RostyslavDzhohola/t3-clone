@@ -113,11 +113,13 @@ export function useMessageInput({
   };
 
   // Handle Enter key specifically
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       console.log("⏎ Enter key pressed, submitting form");
-      const form = e.currentTarget.closest("form");
+      const form = event.currentTarget.closest("form");
       if (form) {
         const formEvent = new Event("submit", {
           bubbles: true,

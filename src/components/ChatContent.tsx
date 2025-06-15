@@ -3,14 +3,13 @@
 import React, { useEffect } from "react";
 import { type Message } from "@ai-sdk/react";
 
-import WelcomeScreen from "./WelcomeScreen";
+// import WelcomeScreen from "./WelcomeScreen";
 import MessageList from "./MessageList";
 import { toast } from "sonner";
 
 interface ChatContentProps {
   messages: Message[];
   status: "ready" | "submitted" | "streaming" | "error";
-  onQuestionClick: (question: string) => void;
   isAnonymous?: boolean;
   anonymousMessageCount?: number;
   anonymousMessageLimit?: number;
@@ -19,7 +18,6 @@ interface ChatContentProps {
 export default function ChatContent({
   messages,
   status,
-  onQuestionClick,
   isAnonymous = false,
   anonymousMessageCount,
   anonymousMessageLimit,
@@ -79,14 +77,7 @@ export default function ChatContent({
       {/* Chat Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="w-full max-w-3xl mx-auto px-4 pb-32">
-          {!hasMessages ? (
-            <WelcomeScreen
-              hasMessages={hasMessages}
-              onQuestionClick={onQuestionClick}
-            />
-          ) : (
-            <MessageList messages={messages} status={status} />
-          )}
+          <MessageList messages={messages} status={status} />
         </div>
       </div>
       {/* Message Input handled as an overlay in ChatUI */}
