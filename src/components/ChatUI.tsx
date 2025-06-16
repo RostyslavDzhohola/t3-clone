@@ -447,25 +447,18 @@ export default function ChatUI() {
     }
   };
 
-  // Use the message input hook (modified for anonymous users)
+  // Use the message input hook (simplified for useChat integration)
   const messageInputHook = useMessageInput({
     user,
     currentChatId: user ? (currentChatId as Id<"chats">) : null,
-    saveMessage,
-    updateChatTitle,
     createNewChat: user
       ? (createNewChat as () => Promise<Id<"chats"> | null>)
       : async () => null,
     setCurrentChatId: user ? setCurrentChatId : () => {},
-    messages,
     handleSubmit,
   });
 
-  const {
-    handleInputChangeWithAutoCreate,
-    onSubmit,
-    handleKeyDown: hookHandleKeyDown,
-  } = user
+  const { handleInputChangeWithAutoCreate, onSubmit } = user
     ? messageInputHook
     : {
         handleInputChangeWithAutoCreate: (
@@ -473,14 +466,7 @@ export default function ChatUI() {
           originalHandler: unknown
         ) => (originalHandler as (e: unknown) => void)(_e),
         onSubmit: () => {},
-        handleKeyDown: () => {},
       };
-
-  // Create enhanced key down handler for textarea
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Pass the textarea event directly - the hook now accepts both input and textarea events
-    hookHandleKeyDown(e);
-  };
 
   // Handle New Chat button
   const handleNewChat = async () => {
@@ -548,7 +534,44 @@ export default function ChatUI() {
     }
 
     if (user) {
-      onSubmit(e, input);
+      // For authenticated users, save user message before letting useChat handle the flow
+      if (
+        currentChatId &&
+        typeof currentChatId === "string" &&
+        currentChatId.length > 10 &&
+        input.trim()
+      ) {
+        try {
+          console.log("💾 Saving user message to Convex...");
+          const messageId = await saveMessage({
+            chatId: currentChatId as Id<"chats">,
+            userId: user.id,
+            role: "user",
+            body: input,
+          });
+          console.log("✅ User message saved with ID:", messageId);
+
+          // Update chat title if this is the first message
+          if (messages.length === 0) {
+            const title = generateChatTitle(input);
+            try {
+              console.log("🏷️ Updating chat title to:", title);
+              await updateChatTitle({
+                chatId: currentChatId as Id<"chats">,
+                title,
+              });
+              console.log("✅ Chat title updated");
+            } catch (error) {
+              console.error("❌ Failed to update chat title:", error);
+            }
+          }
+        } catch (error) {
+          console.error("❌ Failed to save user message:", error);
+        }
+      }
+
+      // Now let useChat handle the AI flow
+      handleSubmit(e);
     } else {
       // For anonymous users, handle submission differently
       if (!input.trim()) return;
@@ -638,7 +661,6 @@ export default function ChatUI() {
             <MessageInput
               input={input}
               onInputChange={enhancedInputChange}
-              onKeyDown={handleKeyDown}
               onSubmit={enhancedSubmit}
               disabled={status !== "ready"}
               placeholder={

@@ -1,34 +1,18 @@
-import { type Message } from "@ai-sdk/react";
 import { Id } from "../../convex/_generated/dataModel";
-import { generateChatTitle } from "@/lib/chatHelpers";
 
 interface UseMessageInputProps {
   user: { id: string } | null | undefined;
   currentChatId: Id<"chats"> | null;
-  saveMessage: (args: {
-    chatId: Id<"chats">;
-    userId: string;
-    role: "user" | "assistant";
-    body: string;
-  }) => Promise<Id<"messages">>;
-  updateChatTitle: (args: {
-    chatId: Id<"chats">;
-    title: string;
-  }) => Promise<null>;
   createNewChat: () => Promise<Id<"chats"> | null>;
   setCurrentChatId: (chatId: Id<"chats">) => void;
-  messages: Message[];
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 }
 
 export function useMessageInput({
   user,
   currentChatId,
-  saveMessage,
-  updateChatTitle,
   createNewChat,
   setCurrentChatId,
-  messages,
   handleSubmit,
 }: UseMessageInputProps) {
   // Auto-create chat when user starts typing (if no current chat)
@@ -45,24 +29,6 @@ export function useMessageInput({
       if (newChatId) {
         setCurrentChatId(newChatId);
       }
-    }
-  };
-
-  // Auto-generate chat title from first user message
-  const updateTitleFromFirstMessage = async (
-    chatId: Id<"chats">,
-    firstMessage: string
-  ) => {
-    const title = generateChatTitle(firstMessage);
-    try {
-      console.log("🏷️ Updating chat title to:", title);
-      await updateChatTitle({
-        chatId,
-        title,
-      });
-      console.log("✅ Chat title updated");
-    } catch (error) {
-      console.error("❌ Failed to update chat title:", error);
     }
   };
 
@@ -83,56 +49,16 @@ export function useMessageInput({
         console.error("❌ Failed to create chat for message");
         return;
       }
+      // Update the currentChatId so the enhanced submit handler can use it
+      setCurrentChatId(activeChatId);
     }
 
-    // Save user message to Convex
-    if (user && activeChatId && input.trim()) {
-      const isFirstMessage = messages.length === 0;
-
-      try {
-        console.log("💾 Saving user message to Convex...");
-        const messageId = await saveMessage({
-          chatId: activeChatId,
-          userId: user.id,
-          role: "user",
-          body: input,
-        });
-        console.log("✅ User message saved with ID:", messageId);
-
-        // Update chat title if this is the first message
-        if (isFirstMessage) {
-          await updateTitleFromFirstMessage(activeChatId, input);
-        }
-      } catch (error) {
-        console.error("❌ Failed to save user message:", error);
-      }
-    }
-
-    // Submit to AI chat
+    // Let useChat handle the message saving - just submit to AI chat
     handleSubmit(e);
-  };
-
-  // Handle Enter key specifically
-  const handleKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      console.log("⏎ Enter key pressed, submitting form");
-      const form = event.currentTarget.closest("form");
-      if (form) {
-        const formEvent = new Event("submit", {
-          bubbles: true,
-          cancelable: true,
-        });
-        form.dispatchEvent(formEvent);
-      }
-    }
   };
 
   return {
     handleInputChangeWithAutoCreate,
     onSubmit,
-    handleKeyDown,
   };
 }

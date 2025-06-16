@@ -14,7 +14,7 @@ import { getAvailableModels, type LLMModel } from "@/lib/models";
 interface MessageInputProps {
   input: string;
   onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   disabled?: boolean;
   placeholder?: string;
@@ -46,8 +46,8 @@ export default function MessageInput({
         }
       }
     }
-    // Call the original onKeyDown handler
-    onKeyDown(e);
+    // Call the original onKeyDown handler if provided
+    onKeyDown?.(e);
   };
 
   const modelsToShow = availableModels || getAvailableModels();
