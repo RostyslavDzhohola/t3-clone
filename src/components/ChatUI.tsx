@@ -5,13 +5,14 @@ import { useChat, type Message } from "@ai-sdk/react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { useMessageInput, useChatNavigation } from "../hooks";
 import {
   getDefaultModel,
   getDefaultAnonymousModel,
+  getAvailableModels,
   type LLMModel,
 } from "@/lib/models";
 import {
@@ -47,9 +48,30 @@ export default function ChatUI() {
   const router = useRouter();
 
   const [isCreatingChat, setIsCreatingChat] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<LLMModel>(
-    user ? getDefaultModel() : getDefaultAnonymousModel()
-  );
+  const [selectedModel, setSelectedModel] = useState<LLMModel>(() => {
+    // Load persisted model from localStorage or use default
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("selectedModel");
+      if (stored) {
+        try {
+          const parsedModel = JSON.parse(stored) as LLMModel;
+          // Validate that the stored model still exists and is available
+          const availableModels = user
+            ? getAvailableModels()
+            : [getDefaultAnonymousModel()];
+          const isValidModel = availableModels.some(
+            (m: LLMModel) => m.id === parsedModel.id
+          );
+          if (isValidModel) {
+            return parsedModel;
+          }
+        } catch {
+          // Ignore parsing errors and fall back to default
+        }
+      }
+    }
+    return user ? getDefaultModel() : getDefaultAnonymousModel();
+  });
   const [previousUserId, setPreviousUserId] = useState<string | null>(null);
 
   // Anonymous user state
@@ -66,6 +88,12 @@ export default function ChatUI() {
   const [currentAnonymousChat, setCurrentAnonymousChat] =
     useState<LocalStorageChat | null>(null);
   const [isAnonymousLimitReached, setIsAnonymousLimitReached] = useState(false);
+
+  // Keep track of the last AI message we've processed so onFinish only
+  // executes once per AI response. This avoids an infinite state update
+  // loop that occurs when `useChat` is re-initialised (e.g. because the
+  // request body changes) and re-fires `onFinish` for the same message.
+  const lastProcessedAiMessageId = useRef<string | null>(null);
 
   // Helper function to clear anonymous data
   const handleClearAnonymousData = () => {
@@ -177,14 +205,38 @@ export default function ChatUI() {
     }
   }, [anonymousAiMessageCount, user]);
 
-  // Update model selection based on user authentication
+  // Update model selection based on user authentication changes
   useEffect(() => {
-    if (user) {
+    // Only reset model when authentication state changes, not on every render
+    const selectedIsAnonymousModel =
+      selectedModel.id === getDefaultAnonymousModel().id;
+
+    // If user just signed in and was using anonymous model, switch to their preferred model or default
+    if (user && selectedIsAnonymousModel) {
+      const stored = localStorage.getItem("selectedModel");
+      if (stored) {
+        try {
+          const parsedModel = JSON.parse(stored) as LLMModel;
+          const availableModels = getAvailableModels();
+          const isValidModel = availableModels.some(
+            (m: LLMModel) => m.id === parsedModel.id
+          );
+          if (isValidModel) {
+            setSelectedModel(parsedModel);
+            return;
+          }
+        } catch {
+          // Ignore parsing errors
+        }
+      }
       setSelectedModel(getDefaultModel());
-    } else {
+    }
+
+    // If user signed out, force to anonymous model
+    if (!user && !selectedIsAnonymousModel) {
       setSelectedModel(getDefaultAnonymousModel());
     }
-  }, [user]);
+  }, [user, selectedModel.id]);
 
   // Convex mutations and queries (only for authenticated users)
   const createChat = useMutation(api.messages.createChat);
@@ -215,6 +267,14 @@ export default function ChatUI() {
   // Memoize the onFinish callback to prevent useChat re-initialization
   const onFinishCallback = useCallback(
     async (message: Message) => {
+      // Guard: if we've already handled this message, bail out early.
+      if (lastProcessedAiMessageId.current === message.id?.toString()) {
+        return;
+      }
+
+      // Mark this message as processed.
+      lastProcessedAiMessageId.current = message.id?.toString() ?? null;
+
       console.log(
         "💬 AI message finished:",
         message.content.slice(0, 50) + "..."
@@ -605,7 +665,14 @@ export default function ChatUI() {
       // Anonymous users can only use Gemini 2.5 Flash
       return;
     }
+
+    // Update the selected model
     setSelectedModel(model);
+
+    // Persist to localStorage for authenticated users
+    if (user) {
+      localStorage.setItem("selectedModel", JSON.stringify(model));
+    }
   };
 
   // Prepare chat list for sidebar
