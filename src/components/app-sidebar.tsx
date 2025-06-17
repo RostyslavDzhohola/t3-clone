@@ -22,16 +22,9 @@ import { toast } from "sonner";
 import {
   getObjectFromStorage,
   setObjectInStorage,
-  ANONYMOUS_STORAGE_KEYS,
   generateAnonymousChatId,
 } from "@/lib/chatHelpers";
-
-interface LocalStorageChat {
-  id: string;
-  title: string;
-  messages: unknown[];
-  createdAt: number;
-}
+import { ANONYMOUS_STORAGE_KEYS, LocalStorageChat } from "@/lib/constants";
 
 interface AppSidebarProps {
   currentChatId?: string;

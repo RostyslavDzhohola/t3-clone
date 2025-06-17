@@ -4,17 +4,11 @@ import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useChat, type Message } from "@ai-sdk/react";
 import { useChatLogic } from "@/hooks/use-chat-logic";
+import { LocalStorageChat } from "@/lib/constants";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
 import RemainingLimitBanner from "./remaining-limit-banner";
 import DataFastWidget from "./data-fast-widget";
-
-interface LocalStorageChat {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-}
 
 interface ChatUIProps {
   chatId?: string;
@@ -25,6 +19,9 @@ interface ChatUIProps {
   onAnonymousAiMessageUpdate?: (count: number) => void;
   onAnonymousChatsUpdate?: (chats: LocalStorageChat[]) => void;
   onCurrentAnonymousChatUpdate?: (chat: LocalStorageChat | null) => void;
+  // Anonymous chat operations from useChatManagement
+  addMessageToAnonymousChat?: (message: Message, chatId: string) => void;
+  currentAnonymousChat?: LocalStorageChat | null;
 }
 
 export default function ChatUI({
@@ -34,8 +31,8 @@ export default function ChatUI({
   isAnonymousLimitReached = false,
   ANONYMOUS_MESSAGE_LIMIT = 10,
   onAnonymousAiMessageUpdate,
-  onAnonymousChatsUpdate,
-  onCurrentAnonymousChatUpdate,
+  addMessageToAnonymousChat,
+  currentAnonymousChat,
 }: ChatUIProps) {
   const { user } = useUser();
   const [bannerClosed, setBannerClosed] = useState(false);
@@ -43,7 +40,6 @@ export default function ChatUI({
   // Use the supporting logic hook
   const {
     selectedModel,
-    currentAnonymousChat,
     convertedMessages,
     handleAiMessageFinish,
     createEnhancedSubmit,
@@ -54,8 +50,8 @@ export default function ChatUI({
     anonymousAiMessageCount,
     ANONYMOUS_MESSAGE_LIMIT,
     onAnonymousAiMessageUpdate,
-    onAnonymousChatsUpdate,
-    onCurrentAnonymousChatUpdate,
+    addMessageToAnonymousChat,
+    currentAnonymousChat,
   });
 
   // Set up useChat hook directly in the component

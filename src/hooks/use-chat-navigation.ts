@@ -2,13 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Id } from "../../convex/_generated/dataModel";
 import { type Message } from "@ai-sdk/react";
-
-interface LocalStorageChat {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-}
+import { LocalStorageChat, ANONYMOUS_STORAGE_KEYS } from "@/lib/constants";
 
 interface Chat {
   _id: Id<"chats">;
@@ -30,8 +24,6 @@ interface UseChatNavigationReturn {
   autoSelectFirstChat: () => void;
   syncChatFromUrl: () => void;
 }
-
-const ANONYMOUS_CURRENT_CHAT_KEY = "anonymous_current_chat";
 
 export function useChatNavigation({
   user,
@@ -60,7 +52,7 @@ export function useChatNavigation({
       if (chat) {
         setCurrentAnonymousChat(chat);
         setCurrentChatId(chatId);
-        localStorage.setItem(ANONYMOUS_CURRENT_CHAT_KEY, chatId);
+        localStorage.setItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT, chatId);
       }
     }
   };
@@ -78,7 +70,7 @@ export function useChatNavigation({
         console.log("🏠 Auto-selecting first anonymous chat:", firstChat.id);
         setCurrentAnonymousChat(firstChat);
         setCurrentChatId(firstChat.id);
-        localStorage.setItem(ANONYMOUS_CURRENT_CHAT_KEY, firstChat.id);
+        localStorage.setItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT, firstChat.id);
       }
     }
   }, [

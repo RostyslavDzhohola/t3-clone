@@ -11,20 +11,17 @@ import {
   type LLMModel,
 } from "@/lib/models";
 import {
+  LocalStorageChat,
+  ANONYMOUS_MESSAGE_LIMIT,
+  MODEL_STORAGE_KEY,
+} from "@/lib/constants";
+import {
   generateChatTitle,
   createUserMessage,
-  ANONYMOUS_STORAGE_KEYS,
-  getObjectFromStorage,
-  setObjectInStorage,
+  setStringInStorage,
+  getStringFromStorage,
 } from "@/lib/chatHelpers";
 import { toast } from "sonner";
-
-interface LocalStorageChat {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-}
 
 interface ChatLogicOptions {
   chatId?: string;
@@ -34,22 +31,25 @@ interface ChatLogicOptions {
   onAnonymousAiMessageUpdate?: (count: number) => void;
   onAnonymousChatsUpdate?: (chats: LocalStorageChat[]) => void;
   onCurrentAnonymousChatUpdate?: (chat: LocalStorageChat | null) => void;
+  // Anonymous chat operations from useChatManagement
+  addMessageToAnonymousChat?: (message: Message, chatId: string) => void;
+  currentAnonymousChat?: LocalStorageChat | null;
 }
 
 export function useChatLogic({
   chatId,
   anonymousAiMessageCount = 0,
-  ANONYMOUS_MESSAGE_LIMIT = 10,
+  ANONYMOUS_MESSAGE_LIMIT: messageLimitProp = ANONYMOUS_MESSAGE_LIMIT,
   onAnonymousAiMessageUpdate,
-  onAnonymousChatsUpdate,
-  onCurrentAnonymousChatUpdate,
+  addMessageToAnonymousChat,
+  currentAnonymousChat,
 }: ChatLogicOptions) {
   const { user } = useUser();
 
   // Model selection state
   const [selectedModel, setSelectedModel] = useState<LLMModel>(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("selectedModel");
+      const stored = getStringFromStorage(MODEL_STORAGE_KEY);
       if (stored) {
         try {
           const parsedModel = JSON.parse(stored) as LLMModel;
@@ -70,38 +70,14 @@ export function useChatLogic({
     return user ? getDefaultModel() : getDefaultAnonymousModel();
   });
 
-  // Anonymous chat state
-  const [currentAnonymousChat, setCurrentAnonymousChat] =
-    useState<LocalStorageChat | null>(null);
-
   // AI message processing state
   const lastProcessedAiMessageId = useRef<string | null>(null);
   const anonymousAiMessageCountRef = useRef(anonymousAiMessageCount);
-  const currentAnonymousChatRef = useRef(currentAnonymousChat);
 
   // Keep refs in sync
   useEffect(() => {
     anonymousAiMessageCountRef.current = anonymousAiMessageCount;
   }, [anonymousAiMessageCount]);
-
-  useEffect(() => {
-    currentAnonymousChatRef.current = currentAnonymousChat;
-  }, [currentAnonymousChat]);
-
-  // Load current anonymous chat
-  useEffect(() => {
-    if (!user && chatId) {
-      const chats = getObjectFromStorage<LocalStorageChat[]>(
-        ANONYMOUS_STORAGE_KEYS.CHATS,
-        []
-      );
-      const currentChat = chats.find((chat) => chat.id === chatId);
-      if (currentChat) {
-        setCurrentAnonymousChat(currentChat);
-        onCurrentAnonymousChatUpdate?.(currentChat);
-      }
-    }
-  }, [user, chatId, onCurrentAnonymousChatUpdate]);
 
   // Convex mutations and queries
   const saveMessage = useMutation(api.messages.saveMessage);
@@ -127,28 +103,6 @@ export function useChatLogic({
       : [];
   }, [user, convexMessages]);
 
-  // Save user message to localStorage for anonymous users
-  const saveUserMessageToLocalStorage = (
-    userMessage: Message,
-    chatToUpdate: LocalStorageChat
-  ) => {
-    const updatedMessages = [...chatToUpdate.messages, userMessage];
-    const updatedChat = { ...chatToUpdate, messages: updatedMessages };
-
-    const chats = getObjectFromStorage<LocalStorageChat[]>(
-      ANONYMOUS_STORAGE_KEYS.CHATS,
-      []
-    );
-    const updatedChats = chats.map((chat) =>
-      chat.id === chatToUpdate.id ? updatedChat : chat
-    );
-
-    setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-    setCurrentAnonymousChat(updatedChat);
-    onAnonymousChatsUpdate?.(updatedChats);
-    onCurrentAnonymousChatUpdate?.(updatedChat);
-  };
-
   // Handle AI message finish callback
   const handleAiMessageFinish = async (message: Message) => {
     // Prevent duplicate onFinish calls
@@ -172,26 +126,9 @@ export function useChatLogic({
         console.error("Failed to save AI message:", error);
       }
     } else {
-      // For anonymous users, save AI response to localStorage
-      const currentChat = currentAnonymousChatRef.current;
-      if (currentChat) {
-        const updatedMessages = [...currentChat.messages, message];
-        const updatedChat = { ...currentChat, messages: updatedMessages };
-
-        // Update chats array
-        const chats = getObjectFromStorage<LocalStorageChat[]>(
-          ANONYMOUS_STORAGE_KEYS.CHATS,
-          []
-        );
-        const updatedChats = chats.map((chat) =>
-          chat.id === currentChat.id ? updatedChat : chat
-        );
-
-        setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-        setCurrentAnonymousChat(updatedChat);
-        onAnonymousChatsUpdate?.(updatedChats);
-        onCurrentAnonymousChatUpdate?.(updatedChat);
-
+      // For anonymous users, use centralized chat management
+      if (currentAnonymousChat && addMessageToAnonymousChat) {
+        addMessageToAnonymousChat(message, currentAnonymousChat.id);
         // Update anonymous AI message count
         onAnonymousAiMessageUpdate?.(anonymousAiMessageCountRef.current + 1);
       }
@@ -213,7 +150,7 @@ export function useChatLogic({
       e.preventDefault();
 
       // Check anonymous message limit
-      if (!user && anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT) {
+      if (!user && anonymousAiMessageCount >= messageLimitProp) {
         toast.error("Sorry, you've reached your rate limit");
         return;
       }
@@ -256,15 +193,16 @@ export function useChatLogic({
         // For anonymous users
         if (!input.trim()) return;
 
-        const activeChat = currentAnonymousChat;
-        if (!activeChat) {
+        if (!currentAnonymousChat) {
           toast.error("Please create a new chat first");
           return;
         }
 
-        // Create and save user message
+        // Create and save user message using centralized management
         const userMessage = createUserMessage(input);
-        saveUserMessageToLocalStorage(userMessage, activeChat);
+        if (addMessageToAnonymousChat) {
+          addMessageToAnonymousChat(userMessage, currentAnonymousChat.id);
+        }
 
         // Use append for AI response
         await append({
@@ -286,20 +224,18 @@ export function useChatLogic({
     setSelectedModel(model);
 
     if (user) {
-      localStorage.setItem("selectedModel", JSON.stringify(model));
+      setStringInStorage(MODEL_STORAGE_KEY, JSON.stringify(model));
     }
   };
 
   return {
     // State
     selectedModel,
-    currentAnonymousChat,
     convertedMessages,
 
     // Functions
     handleAiMessageFinish,
     createEnhancedSubmit,
     handleModelChange,
-    saveUserMessageToLocalStorage,
   };
 }

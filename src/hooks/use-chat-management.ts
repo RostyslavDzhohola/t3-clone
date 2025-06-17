@@ -7,8 +7,12 @@ import { Id } from "../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import type { Message } from "@ai-sdk/react";
 import {
-  generateAnonymousChatId,
+  LocalStorageChat,
+  ANONYMOUS_MESSAGE_LIMIT,
   ANONYMOUS_STORAGE_KEYS,
+} from "@/lib/constants";
+import {
+  generateAnonymousChatId,
   isAnonymousLimitReached as checkAnonymousLimitReached,
   getNumberFromStorage,
   setNumberInStorage,
@@ -16,15 +20,6 @@ import {
   setObjectInStorage,
   clearAnonymousData,
 } from "@/lib/chatHelpers";
-
-interface LocalStorageChat {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-}
-
-const ANONYMOUS_MESSAGE_LIMIT = 10;
 
 export function useChatManagement(currentChatId?: string) {
   const { user } = useUser();
@@ -133,6 +128,58 @@ export function useChatManagement(currentChatId?: string) {
     }
   }, [anonymousAiMessageCount, user]);
 
+  // Anonymous chat operations
+  const updateAnonymousChat = useCallback((updatedChat: LocalStorageChat) => {
+    const chats = getObjectFromStorage<LocalStorageChat[]>(
+      ANONYMOUS_STORAGE_KEYS.CHATS,
+      []
+    );
+    const updatedChats = chats.map((chat) =>
+      chat.id === updatedChat.id ? updatedChat : chat
+    );
+
+    setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
+    setAnonymousChats(updatedChats);
+    setCurrentAnonymousChat(updatedChat);
+  }, []);
+
+  const addMessageToAnonymousChat = useCallback(
+    (message: Message, chatId: string) => {
+      const chats = getObjectFromStorage<LocalStorageChat[]>(
+        ANONYMOUS_STORAGE_KEYS.CHATS,
+        []
+      );
+      const targetChat = chats.find((chat) => chat.id === chatId);
+
+      if (targetChat) {
+        const updatedChat = {
+          ...targetChat,
+          messages: [...targetChat.messages, message],
+        };
+        updateAnonymousChat(updatedChat);
+      }
+    },
+    [updateAnonymousChat]
+  );
+
+  const loadAnonymousChat = useCallback(
+    (chatId: string): LocalStorageChat | null => {
+      const chats = getObjectFromStorage<LocalStorageChat[]>(
+        ANONYMOUS_STORAGE_KEYS.CHATS,
+        []
+      );
+      const chat = chats.find((chat) => chat.id === chatId);
+
+      if (chat) {
+        setCurrentAnonymousChat(chat);
+        localStorage.setItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT, chatId);
+      }
+
+      return chat || null;
+    },
+    []
+  );
+
   // Create new chat
   const createNewChat = useCallback(async () => {
     if (!user) {
@@ -229,6 +276,7 @@ export function useChatManagement(currentChatId?: string) {
     anonymousAiMessageCount,
     isAnonymousLimitReached,
     currentAnonymousChat,
+    anonymousChats,
     allChats,
 
     // Constants
@@ -240,7 +288,12 @@ export function useChatManagement(currentChatId?: string) {
     createNewChat,
     handleClearAnonymousData,
 
-    // Anonymous state setters (for ChatUI to use in onFinish)
+    // Anonymous operations
+    updateAnonymousChat,
+    addMessageToAnonymousChat,
+    loadAnonymousChat,
+
+    // Anonymous state setters (for external components)
     setAnonymousAiMessageCount,
     setAnonymousChats,
     setCurrentAnonymousChat,

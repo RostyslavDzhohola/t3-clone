@@ -1,4 +1,9 @@
 import { type Message } from "@ai-sdk/react";
+import {
+  ANONYMOUS_STORAGE_KEYS,
+  MAX_CHAT_TITLE_LENGTH,
+  DEFAULT_CHAT_TITLE,
+} from "./constants";
 
 // ────────────────────────────────────────────────────────────────────────────────
 // 📝 Chat Title Functions
@@ -7,14 +12,14 @@ import { type Message } from "@ai-sdk/react";
 /**
  * Generate a chat title from message content
  * @param content - The message content to create a title from
- * @param maxLength - Maximum length of the title (default: 30)
+ * @param maxLength - Maximum length of the title (default: from constants)
  * @returns Truncated title with ellipsis if needed
  */
 export const generateChatTitle = (
   content: string,
-  maxLength: number = 30
+  maxLength: number = MAX_CHAT_TITLE_LENGTH
 ): string => {
-  if (!content.trim()) return "New Chat";
+  if (!content.trim()) return DEFAULT_CHAT_TITLE;
 
   const title = content.trim();
   return title.length > maxLength ? title.slice(0, maxLength) + "..." : title;
@@ -93,17 +98,6 @@ export const isConvexChatId = (id: string | null | undefined): boolean => {
   if (!id || typeof id !== "string") return false;
   return !isAnonymousChatId(id) && id.length > 10;
 };
-
-// ────────────────────────────────────────────────────────────────────────────────
-// 💾 LocalStorage Key Constants
-// ────────────────────────────────────────────────────────────────────────────────
-
-export const ANONYMOUS_STORAGE_KEYS = {
-  MESSAGE_COUNT: "anonymous_message_count",
-  AI_COUNT: "anonymous_ai_message_count",
-  CHATS: "anonymous_chats",
-  CURRENT_CHAT: "anonymous_current_chat",
-} as const;
 
 // ────────────────────────────────────────────────────────────────────────────────
 // 🧮 Anonymous Usage Functions
@@ -202,6 +196,41 @@ export const setObjectInStorage = <T>(key: string, value: T): void => {
 
   try {
     localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`Failed to save to localStorage (${key}):`, error);
+  }
+};
+
+/**
+ * Safely get a string from localStorage
+ * @param key - The localStorage key
+ * @param defaultValue - Default value if key doesn't exist
+ * @returns The stored string or default value
+ */
+export const getStringFromStorage = (
+  key: string,
+  defaultValue: string = ""
+): string => {
+  if (typeof window === "undefined") return defaultValue;
+
+  try {
+    const value = localStorage.getItem(key);
+    return value ?? defaultValue;
+  } catch {
+    return defaultValue;
+  }
+};
+
+/**
+ * Safely set a string in localStorage
+ * @param key - The localStorage key
+ * @param value - The string value to store
+ */
+export const setStringInStorage = (key: string, value: string): void => {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.setItem(key, value);
   } catch (error) {
     console.warn(`Failed to save to localStorage (${key}):`, error);
   }

@@ -9,14 +9,8 @@ import { SidebarMenu, SidebarGroupContent } from "@/components/ui/sidebar";
 import { SidebarHistoryItem } from "./sidebar-history-item";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { setObjectInStorage, ANONYMOUS_STORAGE_KEYS } from "@/lib/chatHelpers";
-
-interface LocalStorageChat {
-  id: string;
-  title: string;
-  messages: unknown[];
-  createdAt: number;
-}
+import { setObjectInStorage } from "@/lib/chatHelpers";
+import { ANONYMOUS_STORAGE_KEYS, LocalStorageChat } from "@/lib/constants";
 
 interface Chat {
   _id: Id<"chats"> | string;

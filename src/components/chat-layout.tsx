@@ -8,14 +8,7 @@ import { api } from "../../convex/_generated/api";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { useChatManagement, useChatNavigation } from "../hooks";
-import type { Message } from "@ai-sdk/react";
-
-interface LocalStorageChat {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-}
+import { LocalStorageChat } from "@/lib/constants";
 
 interface ChatLayoutProps {
   children: React.ReactNode;
