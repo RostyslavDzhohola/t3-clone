@@ -14,8 +14,8 @@ const figtree = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "T3.1 Chat Clone",
-  description: "Building a T3.1 Chat Clone",
+  title: "general magic",
+  description: "general magic",
 };
 
 export default function RootLayout({

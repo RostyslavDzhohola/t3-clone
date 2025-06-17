@@ -52,7 +52,7 @@ export default function Sidebar({
           className="text-gray-700 font-bold text-lg hover:text-gray-800 transition-colors"
           title="View T3 Chat Cloneathon on GitHub"
         >
-          T3.1 Chat clone
+          general magic
         </a>
         <a
           href="https://github.com/RostyslavDzhohola/t3-clone"

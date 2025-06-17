@@ -348,3 +348,77 @@ const markdown = useMemo(
 - [React Performance Optimization Patterns](https://kentcdodds.com/blog/optimize-react-re-renders)
 - [When to useMemo and useCallback](https://kentcdodds.com/blog/usememo-and-usecallback)
 - [React DevTools Profiler Tutorial](https://react.dev/learn/react-developer-tools#profiler)
+
+---
+
+#### **Lesson 12: React Hydration Errors & Server-Client Mismatches**
+
+**Overarching Question:** _"What causes hydration errors in Next.js applications, and how do you resolve server-client content mismatches while maintaining performance?"_
+
+**Concept:** Hydration errors occur when the server-rendered HTML differs from what React renders on the client. This commonly happens with browser-only APIs like localStorage, timestamps, or dynamic content that varies between server and client environments.
+
+**Key Learning Points:**
+
+- **Hydration Process:** How React "hydrates" server-rendered HTML by attaching event listeners
+- **Common Mismatch Causes:** localStorage, Date.now(), Math.random(), browser-only APIs
+- **Detection and Debugging:** Using React DevTools and browser console to identify hydration errors
+- **Client-Only Rendering Pattern:** Using useEffect to render content only after hydration
+- **suppressHydrationWarning Usage:** When and how to safely suppress warnings for unavoidable mismatches
+- **Two-Pass Rendering:** Initial server render → client hydration → state-dependent re-render
+
+**Common Hydration Error Scenarios:**
+
+```typescript
+// ❌ Causes hydration error - localStorage unavailable on server
+const count = localStorage.getItem('count') || '0';
+
+// ✅ Solution - client-only rendering
+const [count, setCount] = useState('0');
+useEffect(() => {
+  setCount(localStorage.getItem('count') || '0');
+}, []);
+
+// ❌ Causes hydration error - timestamp differs
+<span>{new Date().toLocaleDateString()}</span>
+
+// ✅ Solution - suppress hydration warning for timestamps
+<span suppressHydrationWarning>{new Date().toLocaleDateString()}</span>
+```
+
+**Solution Patterns:**
+
+- **Conditional Rendering:** Render different content based on client-side state
+- **Loading States:** Show placeholder content until client-side data loads
+- **Dynamic Imports:** Use Next.js dynamic imports with `ssr: false` for client-only components
+- **Environment Detection:** Check `typeof window !== 'undefined'` carefully
+- **suppressHydrationWarning:** Use for unavoidable mismatches (timestamps, browser extensions)
+- **Browser Extension Handling:** Add `suppressHydrationWarning` to form elements targeted by extensions
+
+**Performance Considerations:**
+
+- Client-only rendering prevents SSR benefits (SEO, initial paint)
+- Two-pass rendering can cause layout shift
+- Balance hydration safety with performance and user experience
+
+**Our Specific Cases:**
+
+**Case 1 - localStorage Mismatch:**
+The `RemainingLimitBanner` showed different message counts because:
+
+- Server: Used default limit (10 messages)
+- Client: Read actual count from localStorage (0 messages)
+- Solution: Render banner only on client after hydration
+
+**Case 2 - Browser Extension Attributes:**
+ShadCN Input/Button components had extension-injected attributes:
+
+- Extensions: Grammarly (`data-gr-*`), Dashlane (`data-dashlane-*`)
+- Issue: Extensions modify DOM before React hydration completes
+- Solution: Add `suppressHydrationWarning` to form elements
+
+**Resources:**
+
+- [React Hydration Documentation](https://react.dev/reference/react-dom/client/hydrateRoot)
+- [Next.js Hydration Error Guide](https://nextjs.org/docs/messages/react-hydration-error)
+- [Handling Client-Server Differences](https://nextjs.org/docs/app/building-your-application/rendering/client-components#hydration-mismatch)
+- [React suppressHydrationWarning](https://react.dev/reference/react-dom/components/common#suppressing-unavoidable-hydration-mismatch-errors)

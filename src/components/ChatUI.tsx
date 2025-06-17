@@ -5,7 +5,7 @@ import { useChat, type Message } from "@ai-sdk/react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { useMessageInput, useChatNavigation } from "../hooks";
@@ -245,23 +245,9 @@ export default function ChatUI() {
     isAnonymousLimitReached,
   ]);
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    status,
-    setMessages,
-    append,
-    setInput,
-  } = useChat({
-    api: "/api/chat",
-    body: {
-      model: selectedModel.id,
-      anonymous: !user,
-      anonymousMessageCount: !user ? anonymousAiMessageCount : undefined,
-    },
-    onFinish: async (message: Message) => {
+  // Memoize the onFinish callback to prevent useChat re-initialization
+  const onFinishCallback = useCallback(
+    async (message: Message) => {
       console.log(
         "💬 AI message finished:",
         message.content.slice(0, 50) + "..."
@@ -290,10 +276,6 @@ export default function ChatUI() {
         // Save AI response to localStorage for anonymous users
         // Increment AI message count
         console.log("🤖 AI response finished, incrementing anonymous AI count");
-        console.log(
-          "🔍 Current anonymous AI count before increment:",
-          anonymousAiMessageCount
-        );
         setAnonymousAiMessageCount((count) => {
           const newCount = count + 1;
           console.log("🔍 New anonymous AI count after increment:", newCount);
@@ -325,6 +307,40 @@ export default function ChatUI() {
         });
       }
     },
+    [
+      user,
+      currentChatId,
+      saveMessage,
+      setAnonymousAiMessageCount,
+      setBannerClosed,
+      setCurrentAnonymousChat,
+      setAnonymousChats,
+    ]
+  );
+
+  // Memoize the body to prevent useChat re-initialization
+  const chatBody = useMemo(
+    () => ({
+      model: selectedModel.id,
+      anonymous: !user,
+      anonymousMessageCount: !user ? anonymousAiMessageCount : undefined,
+    }),
+    [selectedModel.id, user, anonymousAiMessageCount]
+  );
+
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    status,
+    setMessages,
+    append,
+    setInput,
+  } = useChat({
+    api: "/api/chat",
+    body: chatBody,
+    onFinish: onFinishCallback,
   });
 
   // Chat navigation hook

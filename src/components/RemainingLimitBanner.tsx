@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { SignInButton } from "@clerk/nextjs";
 import { X } from "lucide-react";
 
@@ -13,6 +13,17 @@ export default function RemainingLimitBanner({
   limitReached,
   onClose,
 }: RemainingLimitBannerProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Don't render on server to avoid hydration mismatch
+  if (!isMounted) {
+    return null;
+  }
+
   const bgColor = limitReached ? "#fee2e2" : "#fef3c7";
   const textColor = limitReached ? "#991b1b" : "#92400e";
   const borderColor = limitReached ? "#ef4444" : "#f59e0b";
