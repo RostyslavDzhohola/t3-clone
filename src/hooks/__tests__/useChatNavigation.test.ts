@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
-import { useChatNavigation } from "../useChatNavigation";
+import { useChatNavigation } from "../use-chat-navigation";
 import { Id } from "../../../convex/_generated/dataModel";
 import { mockPush } from "../../test/setup";
 

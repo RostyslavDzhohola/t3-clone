@@ -1,27 +1,22 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupContent,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import DeleteChatDialog from "./delete-chat-dialog";
+import { SidebarUserNav } from "./sidebar-user-nav";
+import { SidebarSearch } from "./sidebar-search";
+import { SidebarHistory } from "./sidebar-history";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -36,11 +31,6 @@ interface LocalStorageChat {
   title: string;
   messages: unknown[];
   createdAt: number;
-}
-
-interface Chat {
-  _id: Id<"chats"> | string;
-  title: string;
 }
 
 interface AppSidebarProps {
@@ -60,13 +50,8 @@ export function AppSidebar({
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
 
-  // Convex queries and mutations for authenticated users
-  const chats = useQuery(
-    api.messages.getChats,
-    user ? { userId: user.id } : "skip"
-  );
+  // Convex mutations for authenticated users
   const createChat = useMutation(api.messages.createChat);
-  const deleteChat = useMutation(api.messages.deleteChat);
 
   // Anonymous chats from localStorage
   const [anonymousChats, setAnonymousChats] = useState<LocalStorageChat[]>(
@@ -78,19 +63,6 @@ export function AppSidebar({
       );
     }
   );
-
-  // Filter chats based on search term
-  const filteredChats = useMemo(() => {
-    // Prepare unified chat list inside useMemo to avoid dependency issues
-    const allChats: Chat[] = user
-      ? chats?.map((chat) => ({ _id: chat._id, title: chat.title })) || []
-      : anonymousChats.map((chat) => ({ _id: chat.id, title: chat.title }));
-
-    if (!searchTerm.trim()) return allChats;
-    return allChats.filter((chat) =>
-      chat.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [user, chats, anonymousChats, searchTerm]);
 
   // Create new chat
   const handleNewChat = async () => {
@@ -130,55 +102,6 @@ export function AppSidebar({
     }
   };
 
-  // Handle chat selection
-  const handleChatSelect = (chatId: string) => {
-    if (onChatSelect) {
-      onChatSelect(chatId);
-    } else {
-      router.push(`/chat/${chatId}`);
-    }
-  };
-
-  // Handle delete chat
-  const handleDeleteChat = async (chatId: Id<"chats"> | string) => {
-    setDeletingChatId(chatId as string);
-
-    try {
-      if (user) {
-        // Authenticated user - delete from Convex
-        await deleteChat({
-          chatId: chatId as Id<"chats">,
-          userId: user.id,
-        });
-
-        // Navigate away if we're deleting current chat
-        if (currentChatId === chatId) {
-          router.push("/");
-        }
-      } else {
-        // Anonymous user - delete from localStorage
-        const updatedChats = anonymousChats.filter(
-          (chat) => chat.id !== chatId
-        );
-        setAnonymousChats(updatedChats);
-        setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-
-        // Navigate away if we're deleting current chat
-        if (currentChatId === chatId) {
-          localStorage.removeItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT);
-          router.push("/");
-        }
-      }
-
-      toast.success("Chat deleted successfully");
-    } catch (error) {
-      console.error("Failed to delete chat:", error);
-      toast.error("Failed to delete chat");
-    } finally {
-      setDeletingChatId(null);
-    }
-  };
-
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border">
@@ -214,15 +137,10 @@ export function AppSidebar({
         <SidebarGroup>
           <div className="px-2 py-2">
             {/* Search */}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-muted-foreground" />
-              <Input
-                placeholder="Search your chats..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-sidebar-accent/50 border-sidebar-border"
-              />
-            </div>
+            <SidebarSearch
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
 
             {/* New Chat Button */}
             <Button
@@ -237,50 +155,21 @@ export function AppSidebar({
 
           <SidebarSeparator />
 
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {filteredChats.map((chat) => (
-                <SidebarMenuItem key={chat._id}>
-                  <SidebarMenuButton
-                    onClick={() => handleChatSelect(chat._id as string)}
-                    isActive={currentChatId === chat._id}
-                    className="flex items-center justify-between w-full"
-                  >
-                    <span className="truncate flex-1 text-left">
-                      {chat.title}
-                    </span>
-                    <DeleteChatDialog
-                      chatTitle={chat.title}
-                      onDelete={() => handleDeleteChat(chat._id)}
-                      isDeleting={deletingChatId === chat._id}
-                    />
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
+          {/* Chat History */}
+          <SidebarHistory
+            currentChatId={currentChatId}
+            onChatSelect={onChatSelect}
+            searchTerm={searchTerm}
+            anonymousChats={anonymousChats}
+            setAnonymousChats={setAnonymousChats}
+            deletingChatId={deletingChatId}
+            setDeletingChatId={setDeletingChatId}
+          />
         </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SignedOut>
-              <SignInButton mode="modal">
-                <SidebarMenuButton className="w-full">
-                  <span className="mr-2">→</span>
-                  Login
-                </SidebarMenuButton>
-              </SignInButton>
-            </SignedOut>
-            <SignedIn>
-              <SidebarMenuButton className="w-full">
-                <UserButton />
-                <span className="ml-2">Profile</span>
-              </SidebarMenuButton>
-            </SignedIn>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <SidebarUserNav />
       </SidebarFooter>
     </Sidebar>
   );

@@ -11,3 +11,7 @@ export { default as DeleteChatDialog } from "./delete-chat-dialog";
 export { default as MobileWarning } from "./mobile-warning";
 export { AppSidebar } from "./app-sidebar";
 export { ChatLayout } from "./chat-layout";
+export { SidebarHistory } from "./sidebar-history";
+export { SidebarHistoryItem } from "./sidebar-history-item";
+export { SidebarSearch } from "./sidebar-search";
+export { SidebarUserNav } from "./sidebar-user-nav";
