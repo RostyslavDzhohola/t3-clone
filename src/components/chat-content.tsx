@@ -71,14 +71,8 @@ export default function ChatContent({
   ]);
 
   return (
-    <div className="flex flex-col flex-1 relative">
-      {/* Chat Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="w-full max-w-3xl mx-auto px-4 pb-32">
-          <MessageList messages={messages} status={status} />
-        </div>
-      </div>
-      {/* Message Input handled as an overlay in ChatUI */}
+    <div className="w-full max-w-3xl mx-auto px-4 py-6 pb-32">
+      <MessageList messages={messages} status={status} />
     </div>
   );
 }
