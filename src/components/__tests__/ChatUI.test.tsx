@@ -1,6 +1,6 @@
 import { render, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import ChatUI from "../ChatUI";
+import ChatUI from "../chat-ui";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { useChat } from "@ai-sdk/react";

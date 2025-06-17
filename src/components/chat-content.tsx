@@ -4,7 +4,7 @@ import React, { useEffect } from "react";
 import { type Message } from "@ai-sdk/react";
 
 // import WelcomeScreen from "./WelcomeScreen";
-import MessageList from "./MessageList";
+import MessageList from "./message-list";
 import { toast } from "sonner";
 
 interface ChatContentProps {

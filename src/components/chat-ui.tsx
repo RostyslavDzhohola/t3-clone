@@ -27,11 +27,11 @@ import {
   setObjectInStorage,
   clearAnonymousData,
 } from "@/lib/chatHelpers";
-import Sidebar from "./Sidebar";
-import ChatContent from "./ChatContent";
-import MessageInput from "./MessageInput";
-import RemainingLimitBanner from "./RemainingLimitBanner";
-import DataFastWidget from "./DataFastWidget";
+import Sidebar from "./sidebar";
+import ChatContent from "./chat-content";
+import MessageInput from "./message-input";
+import RemainingLimitBanner from "./remaining-limit-banner";
+import DataFastWidget from "./data-fast-widget";
 import { toast } from "sonner";
 
 interface LocalStorageChat {
@@ -315,8 +315,14 @@ export default function ChatUI() {
             body: message.content,
           });
           console.log("✅ AI message saved with ID:", messageId);
+
+          // Mark conversation as complete, allow Convex reloads again
+          isActiveConversation.current = false;
+          console.log("✅ Conversation complete, allowing Convex reloads");
         } catch (error) {
           console.error("❌ Failed to save AI message:", error);
+          // Reset conversation state even on error
+          isActiveConversation.current = false;
         }
       } else if (!user) {
         // Save AI response to localStorage for anonymous users
@@ -394,6 +400,9 @@ export default function ChatUI() {
   useEffect(() => {
     if (navigation.currentChatId !== currentChatId) {
       setCurrentChatId(navigation.currentChatId);
+      // Reset conversation state when switching chats
+      isActiveConversation.current = false;
+      console.log("🔄 Chat switched, resetting conversation state");
     }
   }, [navigation.currentChatId, currentChatId]);
 
@@ -583,8 +592,19 @@ export default function ChatUI() {
     }
   };
 
-  // Load messages when current chat changes
+  // Track if we're in an active conversation to prevent reloading during message exchange
+  const isActiveConversation = useRef(false);
+
+  // Load messages when current chat changes (but not during active conversations)
   useEffect(() => {
+    // Don't reload messages if we're in the middle of a conversation
+    if (isActiveConversation.current) {
+      console.log(
+        "🚫 Skipping message reload - active conversation in progress"
+      );
+      return;
+    }
+
     if (user && currentChatMessages) {
       console.log(
         "📨 Loading messages for current chat:",
@@ -643,6 +663,10 @@ export default function ChatUI() {
     }
 
     if (user) {
+      // Mark that we're starting an active conversation to prevent Convex reloads
+      isActiveConversation.current = true;
+      console.log("🔄 Starting active conversation, blocking Convex reloads");
+
       // For authenticated users, save user message before letting useChat handle the flow
       if (
         currentChatId &&
@@ -676,6 +700,8 @@ export default function ChatUI() {
           }
         } catch (error) {
           console.error("❌ Failed to save user message:", error);
+          // Reset conversation state on error
+          isActiveConversation.current = false;
         }
       }
 

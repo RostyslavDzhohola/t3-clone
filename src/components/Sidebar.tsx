@@ -7,7 +7,7 @@ import { Search } from "lucide-react";
 import type { useUser } from "@clerk/nextjs"; // type-only
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Id } from "../../convex/_generated/dataModel";
-import DeleteChatDialog from "./DeleteChatDialog";
+import DeleteChatDialog from "./delete-chat-dialog";
 
 interface Chat {
   _id: Id<"chats"> | string;

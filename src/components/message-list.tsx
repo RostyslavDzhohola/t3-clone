@@ -2,7 +2,7 @@
 
 import React from "react";
 import { type Message } from "@ai-sdk/react";
-import StreamingMessageRenderer from "./StreamingMessageRenderer";
+import StreamingMessageRenderer from "./streaming-message-renderer";
 
 /**
  * Individual chat bubble – memoized to avoid unnecessary re-renders once its

@@ -1,2 +1,2 @@
-export { default as ChatUI } from "./ChatUI";
-export { default as MessageInput } from "./MessageInput";
+export { default as ChatUI } from "./chat-ui";
+export { default as MessageInput } from "./message-input";

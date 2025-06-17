@@ -65,7 +65,22 @@ Saving messages to the Convex database is a strict two-step process:
 -   **Database Functions:** `convex/messages.ts`
 -   **Main UI Component:** `src/components/ChatUI.tsx`
 
-## 6. Learning System Protocol
+## 6. Component Naming Convention
+
+**CRITICAL:** All React components must use **kebab-case** for their file names.
+
+-   **Component Files:** Use kebab-case naming (e.g., `chat-ui.tsx`, `message-list.tsx`, `delete-chat-dialog.tsx`)
+-   **Component Names:** The actual React component name should remain PascalCase (e.g., `ChatUI`, `MessageList`, `DeleteChatDialog`)
+-   **Consistency:** This applies to all components in the `src/components/` directory and its subdirectories
+
+Examples:
+-   ✅ `chat-ui.tsx` exports `ChatUI`
+-   ✅ `message-list.tsx` exports `MessageList`
+-   ✅ `delete-chat-dialog.tsx` exports `DeleteChatDialog`
+-   ❌ `ChatUI.tsx`
+-   ❌ `MessageList.tsx`
+
+## 7. Learning System Protocol
 
 **IMPORTANT:** Only add learning lessons to README.md when the user explicitly requests it with commands like:
 - "I want to learn about [concept]"

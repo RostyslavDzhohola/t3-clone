@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ChatUI from "@/components/ChatUI";
-import MobileWarning from "@/components/MobileWarning";
+import ChatUI from "@/components/chat-ui";
+import MobileWarning from "@/components/mobile-warning";
 
 export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
