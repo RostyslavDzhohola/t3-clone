@@ -198,8 +198,9 @@ function StreamingMessageRendererComponent({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          // Controls for the size of the assistant messages.
           p: ({ children }) => (
-            <p className="text-sm text-gray-800 leading-relaxed mb-4 mx-0">
+            <p className="text-base text-gray-800 leading-relaxed my-4 mx-0">
               {children}
             </p>
           ),

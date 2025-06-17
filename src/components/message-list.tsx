@@ -18,9 +18,10 @@ const MessageBubble = React.memo(
     isStreamingAssistant: boolean;
   }) {
     if (message.role === "user") {
+      // Controls for the size of the user messages.
       return (
         <div className="flex justify-end mb-6">
-          <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-gray-300 text-gray-800 text-sm leading-relaxed">
+          <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-gray-300 text-gray-800 text-base leading-relaxed">
             {message.content}
           </div>
         </div>
