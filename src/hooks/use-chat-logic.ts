@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
-import { useChat, type Message } from "@ai-sdk/react";
+import { type Message } from "@ai-sdk/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import {
@@ -127,88 +127,6 @@ export function useChatLogic({
       : [];
   }, [user, convexMessages]);
 
-  // Set up useChat hook
-  const {
-    messages,
-    input,
-    setInput,
-    append,
-    handleInputChange,
-    handleSubmit,
-    status,
-    setMessages,
-  } = useChat({
-    api: "/api/chat",
-    body: {
-      model: selectedModel.id,
-      chatId: user ? chatId : undefined,
-    },
-    initialMessages: user
-      ? convertedMessages
-      : currentAnonymousChat?.messages || [],
-    onFinish: async (message: Message) => {
-      // Prevent duplicate onFinish calls
-      if (lastProcessedAiMessageId.current === message.id) {
-        return;
-      }
-      lastProcessedAiMessageId.current = message.id;
-
-      if (user) {
-        // For authenticated users, save AI response to Convex
-        try {
-          if (chatId && typeof chatId === "string" && chatId.length > 10) {
-            await saveMessage({
-              chatId: chatId as Id<"chats">,
-              userId: user.id,
-              role: "assistant",
-              body: message.content,
-            });
-          }
-        } catch (error) {
-          console.error("Failed to save AI message:", error);
-        }
-      } else {
-        // For anonymous users, save AI response to localStorage
-        const currentChat = currentAnonymousChatRef.current;
-        if (currentChat) {
-          const updatedMessages = [...currentChat.messages, message];
-          const updatedChat = { ...currentChat, messages: updatedMessages };
-
-          // Update chats array
-          const chats = getObjectFromStorage<LocalStorageChat[]>(
-            ANONYMOUS_STORAGE_KEYS.CHATS,
-            []
-          );
-          const updatedChats = chats.map((chat) =>
-            chat.id === currentChat.id ? updatedChat : chat
-          );
-
-          setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-          setCurrentAnonymousChat(updatedChat);
-          onAnonymousChatsUpdate?.(updatedChats);
-          onCurrentAnonymousChatUpdate?.(updatedChat);
-
-          // Update anonymous AI message count
-          onAnonymousAiMessageUpdate?.(anonymousAiMessageCountRef.current + 1);
-        }
-      }
-    },
-  });
-
-  // Update messages when Convex data changes
-  useEffect(() => {
-    if (user && convexMessages && convertedMessages.length >= 0) {
-      setMessages(convertedMessages);
-    }
-  }, [user, convexMessages, convertedMessages, setMessages]);
-
-  // Update messages when anonymous chat changes
-  useEffect(() => {
-    if (!user && currentAnonymousChat) {
-      setMessages(currentAnonymousChat.messages);
-    }
-  }, [user, currentAnonymousChat, setMessages]);
-
   // Save user message to localStorage for anonymous users
   const saveUserMessageToLocalStorage = (
     userMessage: Message,
@@ -231,72 +149,132 @@ export function useChatLogic({
     onCurrentAnonymousChatUpdate?.(updatedChat);
   };
 
-  // Enhanced submit handler
-  const enhancedSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    // Check anonymous message limit
-    if (!user && anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT) {
-      toast.error("Sorry, you've reached your rate limit");
+  // Handle AI message finish callback
+  const handleAiMessageFinish = async (message: Message) => {
+    // Prevent duplicate onFinish calls
+    if (lastProcessedAiMessageId.current === message.id) {
       return;
     }
+    lastProcessedAiMessageId.current = message.id;
 
     if (user) {
-      // For authenticated users, save user message before AI flow
-      if (
-        chatId &&
-        typeof chatId === "string" &&
-        chatId.length > 10 &&
-        input.trim()
-      ) {
-        try {
+      // For authenticated users, save AI response to Convex
+      try {
+        if (chatId && typeof chatId === "string" && chatId.length > 10) {
           await saveMessage({
             chatId: chatId as Id<"chats">,
             userId: user.id,
-            role: "user",
-            body: input,
+            role: "assistant",
+            body: message.content,
           });
-
-          // Update chat title if this is the first message
-          if (messages.length === 0) {
-            const title = generateChatTitle(input);
-            try {
-              await updateChatTitle({
-                chatId: chatId as Id<"chats">,
-                title,
-              });
-            } catch (error) {
-              console.error("Failed to update chat title:", error);
-            }
-          }
-        } catch (error) {
-          console.error("Failed to save user message:", error);
         }
+      } catch (error) {
+        console.error("Failed to save AI message:", error);
       }
-
-      handleSubmit(e);
     } else {
-      // For anonymous users
-      if (!input.trim()) return;
+      // For anonymous users, save AI response to localStorage
+      const currentChat = currentAnonymousChatRef.current;
+      if (currentChat) {
+        const updatedMessages = [...currentChat.messages, message];
+        const updatedChat = { ...currentChat, messages: updatedMessages };
 
-      const activeChat = currentAnonymousChat;
-      if (!activeChat) {
-        toast.error("Please create a new chat first");
+        // Update chats array
+        const chats = getObjectFromStorage<LocalStorageChat[]>(
+          ANONYMOUS_STORAGE_KEYS.CHATS,
+          []
+        );
+        const updatedChats = chats.map((chat) =>
+          chat.id === currentChat.id ? updatedChat : chat
+        );
+
+        setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
+        setCurrentAnonymousChat(updatedChat);
+        onAnonymousChatsUpdate?.(updatedChats);
+        onCurrentAnonymousChatUpdate?.(updatedChat);
+
+        // Update anonymous AI message count
+        onAnonymousAiMessageUpdate?.(anonymousAiMessageCountRef.current + 1);
+      }
+    }
+  };
+
+  // Enhanced submit handler
+  const createEnhancedSubmit = (
+    handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void,
+    append: (message: {
+      role: "user";
+      content: string;
+    }) => Promise<string | null | undefined>,
+    input: string,
+    setInput: (value: string) => void,
+    messages: Message[]
+  ) => {
+    return async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+
+      // Check anonymous message limit
+      if (!user && anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT) {
+        toast.error("Sorry, you've reached your rate limit");
         return;
       }
 
-      // Create and save user message
-      const userMessage = createUserMessage(input);
-      saveUserMessageToLocalStorage(userMessage, activeChat);
+      if (user) {
+        // For authenticated users, save user message before AI flow
+        if (
+          chatId &&
+          typeof chatId === "string" &&
+          chatId.length > 10 &&
+          input.trim()
+        ) {
+          try {
+            await saveMessage({
+              chatId: chatId as Id<"chats">,
+              userId: user.id,
+              role: "user",
+              body: input,
+            });
 
-      // Use append for AI response
-      await append({
-        role: "user",
-        content: input,
-      });
+            // Update chat title if this is the first message
+            if (messages.length === 0) {
+              const title = generateChatTitle(input);
+              try {
+                await updateChatTitle({
+                  chatId: chatId as Id<"chats">,
+                  title,
+                });
+              } catch (error) {
+                console.error("Failed to update chat title:", error);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to save user message:", error);
+          }
+        }
 
-      setInput("");
-    }
+        handleSubmit(e);
+      } else {
+        // For anonymous users
+        if (!input.trim()) return;
+
+        const activeChat = currentAnonymousChat;
+        if (!activeChat) {
+          toast.error("Please create a new chat first");
+          return;
+        }
+
+        // Create and save user message
+        const userMessage = createUserMessage(input);
+        saveUserMessageToLocalStorage(userMessage, activeChat);
+
+        // Use append for AI response
+        await append({
+          role: "user",
+          content: input,
+        });
+
+        setInput("");
+      }
+    };
   };
 
   // Handle model change
@@ -316,14 +294,12 @@ export function useChatLogic({
     // State
     selectedModel,
     currentAnonymousChat,
-    messages,
-    input,
-    status,
+    convertedMessages,
 
-    // Actions
-    handleInputChange,
-    enhancedSubmit,
+    // Functions
+    handleAiMessageFinish,
+    createEnhancedSubmit,
     handleModelChange,
-    setInput,
+    saveUserMessageToLocalStorage,
   };
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { type Message } from "@ai-sdk/react";
+import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useChat, type Message } from "@ai-sdk/react";
 import { useChatLogic } from "@/hooks/use-chat-logic";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
@@ -40,14 +40,13 @@ export default function ChatUI({
   const { user } = useUser();
   const [bannerClosed, setBannerClosed] = useState(false);
 
-  // Use the extracted chat logic hook
+  // Use the supporting logic hook
   const {
     selectedModel,
-    messages,
-    input,
-    status,
-    handleInputChange,
-    enhancedSubmit,
+    currentAnonymousChat,
+    convertedMessages,
+    handleAiMessageFinish,
+    createEnhancedSubmit,
     handleModelChange,
   } = useChatLogic({
     chatId,
@@ -58,6 +57,51 @@ export default function ChatUI({
     onAnonymousChatsUpdate,
     onCurrentAnonymousChatUpdate,
   });
+
+  // Set up useChat hook directly in the component
+  const {
+    messages,
+    input,
+    setInput,
+    append,
+    handleInputChange,
+    handleSubmit,
+    status,
+    setMessages,
+  } = useChat({
+    api: "/api/chat",
+    body: {
+      model: selectedModel.id,
+      chatId: user ? chatId : undefined,
+    },
+    initialMessages: user
+      ? convertedMessages
+      : currentAnonymousChat?.messages || [],
+    onFinish: handleAiMessageFinish,
+  });
+
+  // Update messages when Convex data changes
+  useEffect(() => {
+    if (user && convertedMessages.length >= 0) {
+      setMessages(convertedMessages);
+    }
+  }, [user, convertedMessages, setMessages]);
+
+  // Update messages when anonymous chat changes
+  useEffect(() => {
+    if (!user && currentAnonymousChat) {
+      setMessages(currentAnonymousChat.messages);
+    }
+  }, [user, currentAnonymousChat, setMessages]);
+
+  // Create the enhanced submit handler
+  const enhancedSubmit = createEnhancedSubmit(
+    handleSubmit,
+    append,
+    input,
+    setInput,
+    messages
+  );
 
   return (
     <div className="relative flex flex-col h-full bg-gray-50">
