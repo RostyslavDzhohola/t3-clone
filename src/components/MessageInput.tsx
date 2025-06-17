@@ -54,9 +54,9 @@ export default function MessageInput({
 
   return (
     <div className="w-full">
-      <form onSubmit={onSubmit} className="relative">
+      <form onSubmit={onSubmit} className="relative" suppressHydrationWarning>
         {/* Main Input Container */}
-        <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-2xl shadow-sm focus:variant">
+        <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-lg shadow-sm focus:variant">
           {/* Text Input */}
           <textarea
             value={input}
@@ -65,7 +65,8 @@ export default function MessageInput({
             placeholder={placeholder}
             disabled={disabled}
             rows={1}
-            className="w-full px-4 pt-3 pb-2 text-sm bg-transparent border-none outline-none resize-none placeholder:text-gray-400 placeholder:text-sm focus:outline-none min-h-[1.5rem] max-h-32 overflow-y-auto"
+            suppressHydrationWarning
+            className="w-full px-4 pt-3 pb-2 text-sm bg-transparent border-none outline-none resize-none placeholder:text-gray-400 placeholder:text-sm focus:outline-none min-h-[1.5rem] max-h-32 overflow-y-auto "
             style={{
               height: "auto",
               minHeight: "1.5rem",

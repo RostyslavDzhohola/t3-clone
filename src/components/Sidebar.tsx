@@ -96,7 +96,7 @@ export default function Sidebar({
       </Button>
 
       {/* Chat List */}
-      <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2 mb-4">
         {filteredChats?.map((chat) => (
           <Button
             key={chat._id}
