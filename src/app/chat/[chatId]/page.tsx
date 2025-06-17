@@ -1,4 +1,4 @@
-import ChatUI from "@/components/chat-ui";
+import { ChatUI } from "@/components";
 
 interface ChatPageProps {
   params: Promise<{ chatId: string }>;
@@ -7,6 +7,6 @@ interface ChatPageProps {
 export default async function ChatPage({ params }: ChatPageProps) {
   const { chatId } = await params;
 
-  // For now, just render ChatUI - we'll modify it to extract sidebar in next step
-  return <ChatUI />;
+  // ChatLayout will now handle the chatId via URL params, but we still pass it explicitly
+  return <ChatUI chatId={chatId} />;
 }

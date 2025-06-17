@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { SignInButton } from "@clerk/nextjs";
 import { X } from "lucide-react";

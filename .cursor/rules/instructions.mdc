@@ -65,20 +65,30 @@ Saving messages to the Convex database is a strict two-step process:
 -   **Database Functions:** `convex/messages.ts`
 -   **Main UI Component:** `src/components/ChatUI.tsx`
 
-## 6. Component Naming Convention
+## 6. Component and Hook Naming Convention
 
-**CRITICAL:** All React components must use **kebab-case** for their file names.
+**CRITICAL:** All React components and hooks must use **kebab-case** for their file names.
 
+### Components
 -   **Component Files:** Use kebab-case naming (e.g., `chat-ui.tsx`, `message-list.tsx`, `delete-chat-dialog.tsx`)
 -   **Component Names:** The actual React component name should remain PascalCase (e.g., `ChatUI`, `MessageList`, `DeleteChatDialog`)
 -   **Consistency:** This applies to all components in the `src/components/` directory and its subdirectories
+
+### Hooks
+-   **Hook Files:** Use kebab-case naming (e.g., `use-chat-navigation.ts`, `use-message-input.ts`, `use-local-storage.ts`)
+-   **Hook Names:** The actual hook name should remain camelCase (e.g., `useChatNavigation`, `useMessageInput`, `useLocalStorage`)
+-   **Consistency:** This applies to all hooks in the `src/hooks/` directory and its subdirectories
 
 Examples:
 -   ✅ `chat-ui.tsx` exports `ChatUI`
 -   ✅ `message-list.tsx` exports `MessageList`
 -   ✅ `delete-chat-dialog.tsx` exports `DeleteChatDialog`
+-   ✅ `use-chat-navigation.ts` exports `useChatNavigation`
+-   ✅ `use-message-input.ts` exports `useMessageInput`
 -   ❌ `ChatUI.tsx`
 -   ❌ `MessageList.tsx`
+-   ❌ `useChatNavigation.ts`
+-   ❌ `useMessageInput.ts`
 
 ## 7. Learning System Protocol
 

@@ -1,6 +1,6 @@
 import { render, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import ChatUI from "../chat-ui";
+import { ChatUI } from "@/components";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { useChat } from "@ai-sdk/react";
@@ -155,7 +155,7 @@ describe("ChatUI onFinish callback", () => {
 
     // Should only log the message processing once
     const processedLogs = consoleSpy.mock.calls.filter((call) =>
-      call[0]?.includes("💬 AI message finished:")
+      call[0]?.includes("🎯 onFinish called with message:")
     );
 
     expect(processedLogs).toHaveLength(1);
@@ -212,7 +212,7 @@ describe("ChatUI onFinish callback", () => {
 
     // Should process both messages
     const processedLogs = consoleSpy.mock.calls.filter((call) =>
-      call[0]?.includes("💬 AI message finished:")
+      call[0]?.includes("🎯 onFinish called with message:")
     );
 
     expect(processedLogs).toHaveLength(2);

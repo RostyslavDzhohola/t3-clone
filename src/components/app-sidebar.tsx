@@ -34,7 +34,7 @@ import {
 interface LocalStorageChat {
   id: string;
   title: string;
-  messages: any[];
+  messages: unknown[];
   createdAt: number;
 }
 
@@ -79,18 +79,18 @@ export function AppSidebar({
     }
   );
 
-  // Prepare unified chat list
-  const allChats: Chat[] = user
-    ? chats?.map((chat) => ({ _id: chat._id, title: chat.title })) || []
-    : anonymousChats.map((chat) => ({ _id: chat.id, title: chat.title }));
-
   // Filter chats based on search term
   const filteredChats = useMemo(() => {
+    // Prepare unified chat list inside useMemo to avoid dependency issues
+    const allChats: Chat[] = user
+      ? chats?.map((chat) => ({ _id: chat._id, title: chat.title })) || []
+      : anonymousChats.map((chat) => ({ _id: chat.id, title: chat.title }));
+
     if (!searchTerm.trim()) return allChats;
     return allChats.filter((chat) =>
       chat.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [allChats, searchTerm]);
+  }, [user, chats, anonymousChats, searchTerm]);
 
   // Create new chat
   const handleNewChat = async () => {

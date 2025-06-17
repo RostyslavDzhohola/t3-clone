@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ChatUI from "@/components/chat-ui";
+import { ChatLayout, ChatUI } from "@/components";
 import MobileWarning from "@/components/mobile-warning";
 
 export default function Home() {
@@ -41,6 +41,12 @@ export default function Home() {
     return null;
   }
 
-  // Show mobile warning on mobile devices, otherwise show ChatUI for everyone
-  return isMobile ? <MobileWarning /> : <ChatUI />;
+  // Show mobile warning on mobile devices, otherwise show ChatLayout with ChatUI
+  return isMobile ? (
+    <MobileWarning />
+  ) : (
+    <ChatLayout>
+      <ChatUI />
+    </ChatLayout>
+  );
 }

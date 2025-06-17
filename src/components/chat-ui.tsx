@@ -3,12 +3,11 @@
 import React from "react";
 import { useChat, type Message } from "@ai-sdk/react";
 import { useUser } from "@clerk/nextjs";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Id } from "../../convex/_generated/dataModel";
-import { useRouter } from "next/navigation";
-import { useMessageInput, useChatNavigation } from "../hooks";
+// Removed unused import: useMessageInput
 import {
   getDefaultModel,
   getDefaultAnonymousModel,
@@ -18,16 +17,10 @@ import {
 import {
   generateChatTitle,
   createUserMessage,
-  generateAnonymousChatId,
   ANONYMOUS_STORAGE_KEYS,
-  isAnonymousLimitReached as checkAnonymousLimitReached,
-  getNumberFromStorage,
-  setNumberInStorage,
   getObjectFromStorage,
   setObjectInStorage,
-  clearAnonymousData,
 } from "@/lib/chatHelpers";
-import Sidebar from "./sidebar";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
 import RemainingLimitBanner from "./remaining-limit-banner";
@@ -41,13 +34,29 @@ interface LocalStorageChat {
   createdAt: number;
 }
 
-const ANONYMOUS_MESSAGE_LIMIT = 10;
+interface ChatUIProps {
+  chatId?: string;
+  anonymousMessageCount?: number;
+  anonymousAiMessageCount?: number;
+  isAnonymousLimitReached?: boolean;
+  ANONYMOUS_MESSAGE_LIMIT?: number;
+  onAnonymousAiMessageUpdate?: (count: number) => void;
+  onAnonymousChatsUpdate?: (chats: LocalStorageChat[]) => void;
+  onCurrentAnonymousChatUpdate?: (chat: LocalStorageChat | null) => void;
+}
 
-export default function ChatUI() {
+export default function ChatUI({
+  chatId,
+  anonymousMessageCount = 0,
+  anonymousAiMessageCount = 0,
+  isAnonymousLimitReached = false,
+  ANONYMOUS_MESSAGE_LIMIT = 10,
+  onAnonymousAiMessageUpdate,
+  onAnonymousChatsUpdate,
+  onCurrentAnonymousChatUpdate,
+}: ChatUIProps) {
   const { user } = useUser();
-  const router = useRouter();
 
-  const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [selectedModel, setSelectedModel] = useState<LLMModel>(() => {
     // Load persisted model from localStorage or use default
     if (typeof window !== "undefined") {
@@ -72,32 +81,17 @@ export default function ChatUI() {
     }
     return user ? getDefaultModel() : getDefaultAnonymousModel();
   });
-  const [previousUserId, setPreviousUserId] = useState<string | null>(null);
-
-  // Anonymous user state
-  const [anonymousMessageCount, setAnonymousMessageCount] = useState(() => {
-    return getNumberFromStorage(ANONYMOUS_STORAGE_KEYS.MESSAGE_COUNT, 0);
-  });
-
-  const [anonymousAiMessageCount, setAnonymousAiMessageCount] = useState(() => {
-    return getNumberFromStorage(ANONYMOUS_STORAGE_KEYS.AI_COUNT, 0);
-  });
 
   const [bannerClosed, setBannerClosed] = useState(false);
-  const [anonymousChats, setAnonymousChats] = useState<LocalStorageChat[]>([]);
   const [currentAnonymousChat, setCurrentAnonymousChat] =
     useState<LocalStorageChat | null>(null);
-  const [isAnonymousLimitReached, setIsAnonymousLimitReached] = useState(false);
 
   // Keep track of the last AI message we've processed so onFinish only
-  // executes once per AI response. This avoids an infinite state update
-  // loop that occurs when `useChat` is re-initialised (e.g. because the
-  // request body changes) and re-fires `onFinish` for the same message.
+  // executes once per AI response
   const lastProcessedAiMessageId = useRef<string | null>(null);
 
   // Use refs to track anonymous counts to avoid dependencies in onFinish callback
   const anonymousAiMessageCountRef = useRef(anonymousAiMessageCount);
-  const anonymousChatsRef = useRef(anonymousChats);
   const currentAnonymousChatRef = useRef(currentAnonymousChat);
 
   // Keep refs in sync with state
@@ -106,578 +100,159 @@ export default function ChatUI() {
   }, [anonymousAiMessageCount]);
 
   useEffect(() => {
-    anonymousChatsRef.current = anonymousChats;
-  }, [anonymousChats]);
-
-  useEffect(() => {
     currentAnonymousChatRef.current = currentAnonymousChat;
   }, [currentAnonymousChat]);
 
-  // Helper function to clear anonymous data
-  const handleClearAnonymousData = () => {
-    console.log("🧹 Clearing anonymous data from localStorage");
-    clearAnonymousData();
-    setAnonymousMessageCount(0);
-    setAnonymousAiMessageCount(0);
-    setBannerClosed(false);
-    setAnonymousChats([]);
-    setCurrentAnonymousChat(null);
-    setCurrentChatId(null);
-    setIsAnonymousLimitReached(false);
-  };
-
-  // Watch for user sign out to reset anonymous data
+  // Load current anonymous chat
   useEffect(() => {
-    if (previousUserId && !user) {
-      // User has signed out
-      console.log("👋 User signed out, clearing anonymous data");
-      handleClearAnonymousData();
-    }
-    setPreviousUserId(user?.id || null);
-  }, [user, previousUserId]);
-
-  // Load anonymous data from localStorage
-  useEffect(() => {
-    if (!user) {
-      const count = getNumberFromStorage(
-        ANONYMOUS_STORAGE_KEYS.MESSAGE_COUNT,
-        0
-      );
-      console.log(
-        "🔍 Loading anonymous user message count from localStorage:",
-        count
-      );
-      setAnonymousMessageCount(count);
-
-      const aiCount = getNumberFromStorage(ANONYMOUS_STORAGE_KEYS.AI_COUNT, 0);
-      if (aiCount !== anonymousAiMessageCount) {
-        console.log(
-          "🔍 Updating AI count from localStorage (effect):",
-          aiCount
-        );
-        setAnonymousAiMessageCount(aiCount);
-      }
-      console.log(
-        "🔍 Anonymous messages remaining:",
-        ANONYMOUS_MESSAGE_LIMIT - aiCount
-      );
-      setIsAnonymousLimitReached(
-        checkAnonymousLimitReached(aiCount, ANONYMOUS_MESSAGE_LIMIT)
-      );
-
+    if (!user && chatId) {
       const chats = getObjectFromStorage<LocalStorageChat[]>(
         ANONYMOUS_STORAGE_KEYS.CHATS,
         []
       );
-      setAnonymousChats(chats);
-
-      const savedCurrentChatId = localStorage.getItem(
-        ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT
-      );
-      if (savedCurrentChatId && chats.length > 0) {
-        const currentChat = chats.find(
-          (chat: LocalStorageChat) => chat.id === savedCurrentChatId
-        );
-        if (currentChat) {
-          setCurrentAnonymousChat(currentChat);
-          setCurrentChatId(savedCurrentChatId);
-        }
+      const currentChat = chats.find((chat) => chat.id === chatId);
+      if (currentChat) {
+        setCurrentAnonymousChat(currentChat);
+        onCurrentAnonymousChatUpdate?.(currentChat);
       }
     }
-  }, [user, anonymousAiMessageCount]);
+  }, [user, chatId, onCurrentAnonymousChatUpdate]);
 
-  // Save anonymous message count to localStorage
-  useEffect(() => {
-    if (!user) {
-      setNumberInStorage(
-        ANONYMOUS_STORAGE_KEYS.MESSAGE_COUNT,
-        anonymousMessageCount
-      );
-    }
-  }, [anonymousMessageCount, user]);
-
-  // Save anonymous AI message count to localStorage
-  useEffect(() => {
-    if (!user) {
-      console.log(
-        "💾 Saving anonymous AI count to localStorage:",
-        anonymousAiMessageCount
-      );
-      setNumberInStorage(
-        ANONYMOUS_STORAGE_KEYS.AI_COUNT,
-        anonymousAiMessageCount
-      );
-      setIsAnonymousLimitReached(
-        checkAnonymousLimitReached(
-          anonymousAiMessageCount,
-          ANONYMOUS_MESSAGE_LIMIT
-        )
-      );
-      console.log(
-        "🔍 Is limit reached?",
-        checkAnonymousLimitReached(
-          anonymousAiMessageCount,
-          ANONYMOUS_MESSAGE_LIMIT
-        )
-      );
-    }
-  }, [anonymousAiMessageCount, user]);
-
-  // Update model selection based on user authentication changes
-  useEffect(() => {
-    // Only reset model when authentication state changes, not on every render
-    const selectedIsAnonymousModel =
-      selectedModel.id === getDefaultAnonymousModel().id;
-
-    // If user just signed in and was using anonymous model, switch to their preferred model or default
-    if (user && selectedIsAnonymousModel) {
-      const stored = localStorage.getItem("selectedModel");
-      if (stored) {
-        try {
-          const parsedModel = JSON.parse(stored) as LLMModel;
-          const availableModels = getAvailableModels();
-          const isValidModel = availableModels.some(
-            (m: LLMModel) => m.id === parsedModel.id
-          );
-          if (isValidModel) {
-            setSelectedModel(parsedModel);
-            return;
-          }
-        } catch {
-          // Ignore parsing errors
-        }
-      }
-      setSelectedModel(getDefaultModel());
-    }
-
-    // If user signed out, force to anonymous model
-    if (!user && !selectedIsAnonymousModel) {
-      setSelectedModel(getDefaultAnonymousModel());
-    }
-  }, [user, selectedModel.id]);
-
-  // Convex mutations and queries (only for authenticated users)
-  const createChat = useMutation(api.messages.createChat);
+  // Convex mutations
   const saveMessage = useMutation(api.messages.saveMessage);
   const updateChatTitle = useMutation(api.messages.updateChatTitle);
-  const deleteChat = useMutation(api.messages.deleteChat);
 
-  const chats = useQuery(
-    api.messages.getChats,
-    user ? { userId: user.id } : "skip"
-  );
-
-  // Temporary currentChatId state
-  const [currentChatId, setCurrentChatId] = useState<
-    Id<"chats"> | string | null
-  >(null);
-
-  const currentChatMessages = useQuery(
-    api.messages.getMessages,
-    user &&
-      currentChatId &&
-      typeof currentChatId === "string" &&
-      !currentChatId.startsWith("anon_") &&
-      currentChatId.length > 10
-      ? { chatId: currentChatId as Id<"chats"> }
-      : "skip"
-  );
-
-  // Memoize the onFinish callback to prevent useChat re-initialization
-  const onFinishCallback = useCallback(
-    async (message: Message) => {
-      // Guard: if we've already handled this message, bail out early.
-      if (lastProcessedAiMessageId.current === message.id?.toString()) {
-        return;
-      }
-
-      // Mark this message as processed.
-      lastProcessedAiMessageId.current = message.id?.toString() ?? null;
-
-      console.log(
-        "💬 AI message finished:",
-        message.content.slice(0, 50) + "..."
-      );
-
-      if (
-        user &&
-        currentChatId &&
-        typeof currentChatId === "string" &&
-        currentChatId.length > 10
-      ) {
-        // Save AI response to Convex for authenticated users
-        try {
-          console.log("💾 Saving AI message to Convex...");
-          const messageId = await saveMessage({
-            chatId: currentChatId as Id<"chats">,
-            userId: user.id,
-            role: "assistant",
-            body: message.content,
-          });
-          console.log("✅ AI message saved with ID:", messageId);
-
-          // Mark conversation as complete, allow Convex reloads again
-          isActiveConversation.current = false;
-          console.log("✅ Conversation complete, allowing Convex reloads");
-        } catch (error) {
-          console.error("❌ Failed to save AI message:", error);
-          // Reset conversation state even on error
-          isActiveConversation.current = false;
-        }
-      } else if (!user) {
-        // Save AI response to localStorage for anonymous users
-        // Increment AI message count using refs to avoid dependencies
-        console.log("🤖 AI response finished, incrementing anonymous AI count");
-        const newCount = anonymousAiMessageCountRef.current + 1;
-        console.log("🔍 New anonymous AI count after increment:", newCount);
-        console.log(
-          "🔍 Anonymous messages remaining after this response:",
-          ANONYMOUS_MESSAGE_LIMIT - newCount
-        );
-
-        // Update state
-        setAnonymousAiMessageCount(newCount);
-
-        // Reset banner closed state so it reappears after AI response
-        setBannerClosed(false);
-
-        // Use ref to get current chat state
-        const prevChat = currentAnonymousChatRef.current;
-        if (prevChat) {
-          const updatedMessages = [...prevChat.messages, message];
-          const updatedChat = { ...prevChat, messages: updatedMessages };
-
-          // Update state using current ref values
-          const prevChats = anonymousChatsRef.current;
-          const updatedChats = prevChats.map((chat) =>
-            chat.id === prevChat.id ? updatedChat : chat
-          );
-          setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-          setAnonymousChats(updatedChats);
-          setCurrentAnonymousChat(updatedChat);
-
-          console.log("✅ AI message saved to localStorage");
-        }
-      }
-    },
-    [user, currentChatId, saveMessage] // Minimal dependencies
-  );
-
-  // Memoize the body to prevent useChat re-initialization
-  const chatBody = useMemo(
-    () => ({
-      model: selectedModel.id,
-      anonymous: !user,
-    }),
-    [selectedModel.id, user]
-  );
-
+  // Set up useChat hook
   const {
     messages,
     input,
+    setInput,
+    append,
     handleInputChange,
     handleSubmit,
     status,
-    setMessages,
-    append,
-    setInput,
   } = useChat({
     api: "/api/chat",
-    body: chatBody,
-    onFinish: onFinishCallback,
+    body: {
+      model: selectedModel.id,
+      chatId: user ? chatId : undefined,
+    },
+    initialMessages: user ? undefined : currentAnonymousChat?.messages || [],
+    onFinish: async (message: Message) => {
+      // Prevent duplicate onFinish calls
+      if (lastProcessedAiMessageId.current === message.id) {
+        console.log("⚠️ Duplicate onFinish detected, skipping");
+        return;
+      }
+      lastProcessedAiMessageId.current = message.id;
+
+      console.log("🎯 onFinish called with message:", message);
+
+      if (user) {
+        // For authenticated users, save AI response to Convex
+        try {
+          if (chatId && typeof chatId === "string" && chatId.length > 10) {
+            console.log("💾 Saving AI message to Convex...");
+            const messageId = await saveMessage({
+              chatId: chatId as Id<"chats">,
+              userId: user.id,
+              role: "assistant",
+              body: message.content,
+            });
+            console.log("✅ AI message saved with ID:", messageId);
+          }
+        } catch (error) {
+          console.error("❌ Failed to save AI message:", error);
+        }
+      } else {
+        // For anonymous users, save AI response to localStorage
+        console.log("💾 Saving AI message to localStorage...");
+        const currentChat = currentAnonymousChatRef.current;
+        if (currentChat) {
+          const updatedMessages = [...currentChat.messages, message];
+          const updatedChat = { ...currentChat, messages: updatedMessages };
+
+          // Update chats array
+          const chats = getObjectFromStorage<LocalStorageChat[]>(
+            ANONYMOUS_STORAGE_KEYS.CHATS,
+            []
+          );
+          const updatedChats = chats.map((chat) =>
+            chat.id === currentChat.id ? updatedChat : chat
+          );
+
+          setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
+          setCurrentAnonymousChat(updatedChat);
+          onAnonymousChatsUpdate?.(updatedChats);
+          onCurrentAnonymousChatUpdate?.(updatedChat);
+        }
+
+        // Increment anonymous AI message count
+        const newCount = anonymousAiMessageCountRef.current + 1;
+        onAnonymousAiMessageUpdate?.(newCount);
+        console.log("📊 Anonymous AI message count updated to:", newCount);
+      }
+    },
+    onError: (error) => {
+      console.error("Chat error:", error);
+      toast.error("Something went wrong. Please try again.");
+    },
   });
 
-  // Chat navigation hook
-  const navigation = useChatNavigation({
-    user,
-    chats,
-    anonymousChats,
-    setMessages,
-    setCurrentAnonymousChat,
-  });
+  // Message input handling - removed unnecessary hook
 
-  // Update currentChatId from navigation hook
-  useEffect(() => {
-    if (navigation.currentChatId !== currentChatId) {
-      setCurrentChatId(navigation.currentChatId);
-      // Reset conversation state when switching chats
-      isActiveConversation.current = false;
-      console.log("🔄 Chat switched, resetting conversation state");
-    }
-  }, [navigation.currentChatId, currentChatId]);
-
-  // Helper function to save user message to localStorage for anonymous users
+  // Save user message to localStorage for anonymous users
   const saveUserMessageToLocalStorage = (
     userMessage: Message,
     chatToUpdate: LocalStorageChat
   ) => {
-    try {
-      const updatedMessages = [...chatToUpdate.messages, userMessage];
-      const updatedChat = { ...chatToUpdate, messages: updatedMessages };
+    const updatedMessages = [...chatToUpdate.messages, userMessage];
+    const updatedChat = { ...chatToUpdate, messages: updatedMessages };
 
-      // Update chat title if this is the first message
-      if (chatToUpdate.messages.length === 0) {
-        updatedChat.title = generateChatTitle(userMessage.content);
-      }
+    // Update chats array
+    const chats = getObjectFromStorage<LocalStorageChat[]>(
+      ANONYMOUS_STORAGE_KEYS.CHATS,
+      []
+    );
+    const updatedChats = chats.map((chat) =>
+      chat.id === chatToUpdate.id ? updatedChat : chat
+    );
 
-      // Update current chat state first
-      setCurrentAnonymousChat(updatedChat);
+    setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
+    setCurrentAnonymousChat(updatedChat);
+    onAnonymousChatsUpdate?.(updatedChats);
+    onCurrentAnonymousChatUpdate?.(updatedChat);
 
-      // Get the most current chats from localStorage to avoid stale state
-      const currentChats = getObjectFromStorage<LocalStorageChat[]>(
-        ANONYMOUS_STORAGE_KEYS.CHATS,
-        []
-      );
-
-      // Update the specific chat in the array
-      const updatedChats = currentChats.map((chat) =>
-        chat.id === chatToUpdate.id ? updatedChat : chat
-      );
-
-      // If chat doesn't exist, add it
-      const chatExists = currentChats.some(
-        (chat) => chat.id === chatToUpdate.id
-      );
-      if (!chatExists) {
-        updatedChats.unshift(updatedChat);
-      }
-
-      // Save to localStorage
-      setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-
-      // Update the React state
-      setAnonymousChats(updatedChats);
-
-      console.log("✅ User message saved to localStorage");
-      return updatedChat;
-    } catch (error) {
-      console.error("❌ Failed to save user message to localStorage:", error);
-      return chatToUpdate; // return unchanged chat
-    }
+    console.log("💾 User message saved to localStorage");
   };
 
-  // Create a new chat (handles both authenticated and anonymous users)
-  const createNewChat = async () => {
-    if (isCreatingChat) {
-      console.warn("⚠️ Already creating a chat, skipping...");
-      return null;
-    }
-
-    console.log("🆕 Creating new chat...");
-    setIsCreatingChat(true);
-
-    try {
-      if (user) {
-        // Authenticated user - use Convex
-        const chatId = await createChat({
-          userId: user.id,
-          title: "New Chat",
-        });
-
-        console.log("✅ Chat created with ID:", chatId);
-        setCurrentChatId(chatId);
-        setMessages([]); // Clear current messages
-        router.push(`/chat/${chatId}`);
-        return chatId;
-      } else {
-        // Anonymous user - use localStorage
-        const newChatId = generateAnonymousChatId();
-        const newChat: LocalStorageChat = {
-          id: newChatId,
-          title: "New Chat",
-          messages: [],
-          createdAt: Date.now(),
-        };
-
-        const updatedChats = [newChat, ...anonymousChats];
-        setAnonymousChats(updatedChats);
-        setCurrentAnonymousChat(newChat);
-        setCurrentChatId(newChatId);
-        setMessages([]);
-
-        // Save to localStorage
-        setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-        localStorage.setItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT, newChatId);
-
-        console.log("✅ Anonymous chat created with ID:", newChatId);
-        return newChatId;
-      }
-    } catch (error) {
-      console.error("❌ Failed to create new chat:", error);
-      return null;
-    } finally {
-      setIsCreatingChat(false);
-    }
-  };
-
-  // Use the message input hook (simplified for useChat integration)
-  const messageInputHook = useMessageInput({
-    user,
-    currentChatId: user ? (currentChatId as Id<"chats">) : null,
-    createNewChat: user
-      ? (createNewChat as () => Promise<Id<"chats"> | null>)
-      : async () => null,
-    setCurrentChatId: user ? setCurrentChatId : () => {},
-    handleSubmit,
-  });
-
-  const { handleInputChangeWithAutoCreate } = user
-    ? messageInputHook
-    : {
-        handleInputChangeWithAutoCreate: (
-          _e: unknown,
-          originalHandler: unknown
-        ) => (originalHandler as (e: unknown) => void)(_e),
-      };
-
-  // Handle New Chat button
-  const handleNewChat = async () => {
-    console.log("🖱️ New Chat button clicked");
-    await createNewChat();
-  };
-
-  // Handle Delete Chat (only for authenticated users)
-  const handleDeleteChat = async (chatId: Id<"chats"> | string) => {
-    if (!user) {
-      // For anonymous users, remove from localStorage
-      try {
-        const chatIdStr = chatId as string;
-        console.log("🗑️ Deleting anonymous chat:", chatIdStr);
-
-        // Remove from localStorage
-        const updatedChats = anonymousChats.filter(
-          (chat) => chat.id !== chatIdStr
-        );
-        setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-        setAnonymousChats(updatedChats);
-
-        // If we're deleting the current chat, clear it
-        if (currentChatId === chatIdStr) {
-          setCurrentAnonymousChat(null);
-          setCurrentChatId(null);
-          setMessages([]);
-          localStorage.removeItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT);
-        }
-
-        console.log("✅ Anonymous chat deleted successfully");
-        toast.success("Chat deleted successfully");
-      } catch (error) {
-        console.error("❌ Failed to delete anonymous chat:", error);
-        toast.error("Failed to delete chat");
-      }
-      return;
-    }
-
-    // For authenticated users, use Convex mutation
-    try {
-      console.log("🗑️ Deleting chat:", chatId);
-      await deleteChat({
-        chatId: chatId as Id<"chats">,
-        userId: user.id,
-      });
-
-      // If we're deleting the current chat, clear it
-      if (currentChatId === chatId) {
-        setCurrentChatId(null);
-        setMessages([]);
-        // Navigate to home page for authenticated users
-        router.push("/");
-      }
-
-      console.log("✅ Chat deleted successfully");
-      toast.success("Chat deleted successfully");
-    } catch (error) {
-      console.error("❌ Failed to delete chat:", error);
-      toast.error("Failed to delete chat");
-    }
-  };
-
-  // Track if we're in an active conversation to prevent reloading during message exchange
-  const isActiveConversation = useRef(false);
-
-  // Load messages when current chat changes (but not during active conversations)
-  useEffect(() => {
-    // Don't reload messages if we're in the middle of a conversation
-    if (isActiveConversation.current) {
-      console.log(
-        "🚫 Skipping message reload - active conversation in progress"
-      );
-      return;
-    }
-
-    if (user && currentChatMessages) {
-      console.log(
-        "📨 Loading messages for current chat:",
-        currentChatMessages.length
-      );
-      const formattedMessages: Message[] = currentChatMessages.map((msg) => ({
-        id: msg._id,
-        role: msg.role,
-        content: msg.body,
-        createdAt: new Date(msg._creationTime),
-      }));
-      setMessages(formattedMessages);
-    } else if (!user && currentAnonymousChat) {
-      console.log(
-        "📨 Loading anonymous messages:",
-        currentAnonymousChat.messages.length
-      );
-      setMessages(currentAnonymousChat.messages);
-    } else {
-      setMessages([]);
-    }
-  }, [user, currentChatMessages, currentAnonymousChat, setMessages]);
-
-  // Create enhanced input change handler
+  // Enhanced input change handler
   const enhancedInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // Check anonymous message limit
-    if (!user && isAnonymousLimitReached) {
-      return;
-    }
-
-    if (user) {
-      // Create a synthetic input event for the useChat hook
-      const syntheticEvent = {
-        ...e,
-        target: { value: e.target.value } as HTMLInputElement,
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleInputChangeWithAutoCreate(syntheticEvent, handleInputChange);
-    } else {
-      // For anonymous users, just handle input change
-      const syntheticEvent = {
-        ...e,
-        target: { value: e.target.value } as HTMLInputElement,
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleInputChange(syntheticEvent);
-    }
+    handleInputChange(e);
   };
 
-  // Create enhanced submit handler
+  // Enhanced submit handler
   const enhancedSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Check anonymous message limit (need 2 messages: user + AI)
+    // Check anonymous message limit
     if (!user && anonymousAiMessageCount >= ANONYMOUS_MESSAGE_LIMIT) {
       toast.error("Sorry, you've reached your rate limit");
       return;
     }
 
     if (user) {
-      // Mark that we're starting an active conversation to prevent Convex reloads
-      isActiveConversation.current = true;
-      console.log("🔄 Starting active conversation, blocking Convex reloads");
-
       // For authenticated users, save user message before letting useChat handle the flow
       if (
-        currentChatId &&
-        typeof currentChatId === "string" &&
-        currentChatId.length > 10 &&
+        chatId &&
+        typeof chatId === "string" &&
+        chatId.length > 10 &&
         input.trim()
       ) {
         try {
           console.log("💾 Saving user message to Convex...");
           const messageId = await saveMessage({
-            chatId: currentChatId as Id<"chats">,
+            chatId: chatId as Id<"chats">,
             userId: user.id,
             role: "user",
             body: input,
@@ -690,7 +265,7 @@ export default function ChatUI() {
             try {
               console.log("🏷️ Updating chat title to:", title);
               await updateChatTitle({
-                chatId: currentChatId as Id<"chats">,
+                chatId: chatId as Id<"chats">,
                 title,
               });
               console.log("✅ Chat title updated");
@@ -700,8 +275,6 @@ export default function ChatUI() {
           }
         } catch (error) {
           console.error("❌ Failed to save user message:", error);
-          // Reset conversation state on error
-          isActiveConversation.current = false;
         }
       }
 
@@ -712,26 +285,11 @@ export default function ChatUI() {
       if (!input.trim()) return;
 
       // Ensure we have an anonymous chat
-      let activeChat = currentAnonymousChat;
+      const activeChat = currentAnonymousChat;
       if (!activeChat) {
-        console.log(
-          "🆕 No active anonymous chat, creating one for message submission"
-        );
-        const newChatId = await createNewChat();
-        if (!newChatId) {
-          console.error("❌ Failed to create anonymous chat for message");
-          return;
-        }
-        // Re-fetch the active chat after creation
-        const currentChats = getObjectFromStorage<LocalStorageChat[]>(
-          ANONYMOUS_STORAGE_KEYS.CHATS,
-          []
-        );
-        activeChat = currentChats.find((c) => c.id === newChatId) || null;
-        if (!activeChat) {
-          console.error("❌ Failed to find newly created chat");
-          return;
-        }
+        console.error("❌ No active anonymous chat for message submission");
+        toast.error("Please create a new chat first");
+        return;
       }
 
       // Create user message
@@ -767,27 +325,10 @@ export default function ChatUI() {
     }
   };
 
-  // Prepare chat list for sidebar
-  const sidebarChats = user
-    ? chats?.map((chat) => ({ _id: chat._id, title: chat.title })) || []
-    : anonymousChats.map((chat) => ({
-        _id: chat.id,
-        title: chat.title,
-      }));
-
   return (
-    <div className="flex h-screen w-full bg-gray-50 relative">
+    <div className="flex flex-col h-screen w-full bg-gray-50 relative">
       <DataFastWidget />
-      <Sidebar
-        user={user}
-        chats={sidebarChats}
-        currentChatId={currentChatId}
-        isCreatingChat={isCreatingChat}
-        onNewChat={handleNewChat}
-        onChatSelect={navigation.handleChatSelect}
-        onDeleteChat={handleDeleteChat}
-        isAnonymousLimitReached={user ? undefined : isAnonymousLimitReached}
-      />
+
       <ChatContent
         messages={messages}
         status={status}
@@ -796,11 +337,10 @@ export default function ChatUI() {
         anonymousMessageLimit={user ? undefined : ANONYMOUS_MESSAGE_LIMIT}
       />
 
-      {/* Floating Message Input Overlay  Use classes below to adjust the input field centering. 
-      Instructions for AIs and agents. Please do not delete these comments. */}
-      <div className="fixed bottom-0 left-[230px] right-0 flex justify-center pt-4 z-40 pointer-events-none ">
-        <div className="w-full max-w-3xl pointer-events-auto">
-          <div className="backdrop-blur-xs border border-gray-200 rounded-t-2xl shadow-lg px-2 pt-2 ">
+      {/* Floating Message Input Overlay */}
+      <div className="fixed bottom-0 left-0 right-0 flex justify-center pt-4 z-40 pointer-events-none">
+        <div className="w-full max-w-3xl pointer-events-auto px-4">
+          <div className="backdrop-blur-xs border border-gray-200 rounded-t-2xl shadow-lg px-2 pt-2">
             <MessageInput
               input={input}
               onInputChange={enhancedInputChange}
@@ -825,13 +365,6 @@ export default function ChatUI() {
               0,
               ANONYMOUS_MESSAGE_LIMIT - anonymousAiMessageCount
             );
-            console.log("🏷️ Banner calculation:", {
-              ANONYMOUS_MESSAGE_LIMIT,
-              anonymousAiMessageCount,
-              remaining,
-              isAnonymousLimitReached,
-              bannerClosed,
-            });
             return (
               <RemainingLimitBanner
                 remaining={remaining}
@@ -845,4 +378,3 @@ export default function ChatUI() {
     </div>
   );
 }
-// 683 lines of code compare after refactoring
