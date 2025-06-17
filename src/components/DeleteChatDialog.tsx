@@ -44,8 +44,9 @@ export default function DeleteChatDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Chat</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete "{chatTitle}"? This action cannot be
-            undone and will permanently remove all messages in this chat.
+            Are you sure you want to delete &quot;{chatTitle}&quot;? This action
+            cannot be undone and will permanently remove all messages in this
+            chat.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

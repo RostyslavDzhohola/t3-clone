@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Id } from "../../convex/_generated/dataModel";
 import { type Message } from "@ai-sdk/react";
@@ -66,7 +66,7 @@ export function useChatNavigation({
   };
 
   // Auto-select first chat if none selected and we're on the home page
-  const autoSelectFirstChat = () => {
+  const autoSelectFirstChat = useCallback(() => {
     if (pathname === "/" && !currentChatId) {
       if (user && chats && chats.length > 0) {
         const firstChat = chats[0];
@@ -81,10 +81,18 @@ export function useChatNavigation({
         localStorage.setItem(ANONYMOUS_CURRENT_CHAT_KEY, firstChat.id);
       }
     }
-  };
+  }, [
+    pathname,
+    currentChatId,
+    user,
+    chats,
+    anonymousChats,
+    router,
+    setCurrentAnonymousChat,
+  ]);
 
   // Extract chat ID from URL if we're on a chat page (only for authenticated users)
-  const syncChatFromUrl = () => {
+  const syncChatFromUrl = useCallback(() => {
     if (user && pathname.startsWith("/chat/")) {
       const chatIdFromUrl = pathname.split("/chat/")[1];
       if (chatIdFromUrl && chatIdFromUrl !== currentChatId) {
@@ -92,17 +100,24 @@ export function useChatNavigation({
         setCurrentChatId(chatIdFromUrl as Id<"chats">);
       }
     }
-  };
+  }, [user, pathname, currentChatId]);
 
   // Auto-select first chat effect
   useEffect(() => {
     autoSelectFirstChat();
-  }, [user, chats, anonymousChats, currentChatId, pathname]);
+  }, [
+    user,
+    chats,
+    anonymousChats,
+    currentChatId,
+    pathname,
+    autoSelectFirstChat,
+  ]);
 
   // URL synchronization effect
   useEffect(() => {
     syncChatFromUrl();
-  }, [user, pathname, currentChatId]);
+  }, [user, pathname, currentChatId, syncChatFromUrl]);
 
   // Clear messages when no chat is selected
   useEffect(() => {

@@ -512,14 +512,13 @@ export default function ChatUI() {
     handleSubmit,
   });
 
-  const { handleInputChangeWithAutoCreate, onSubmit } = user
+  const { handleInputChangeWithAutoCreate } = user
     ? messageInputHook
     : {
         handleInputChangeWithAutoCreate: (
           _e: unknown,
           originalHandler: unknown
         ) => (originalHandler as (e: unknown) => void)(_e),
-        onSubmit: () => {},
       };
 
   // Handle New Chat button

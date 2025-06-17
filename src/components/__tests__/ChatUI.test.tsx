@@ -1,9 +1,10 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import ChatUI from "../ChatUI";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { useChat } from "@ai-sdk/react";
+import { type Message } from "@ai-sdk/react";
 
 // Mock all dependencies
 vi.mock("@clerk/nextjs");
@@ -41,7 +42,9 @@ describe("ChatUI onFinish callback", () => {
       isLoaded: true,
       isSignedIn: false,
     });
-    mockUseMutation.mockReturnValue(vi.fn() as any);
+    mockUseMutation.mockReturnValue(
+      vi.fn() as unknown as ReturnType<typeof useMutation>
+    );
     mockUseQuery.mockReturnValue(undefined);
 
     // Mock useChat hook
@@ -54,7 +57,7 @@ describe("ChatUI onFinish callback", () => {
       setMessages: vi.fn(),
       append: vi.fn(),
       setInput: vi.fn(),
-    } as any);
+    } as unknown as ReturnType<typeof useChat>);
 
     // Mock hooks
     vi.mock("../hooks", () => ({
@@ -105,11 +108,13 @@ describe("ChatUI onFinish callback", () => {
   });
 
   it("should ignore duplicate onFinish calls with the same message ID", async () => {
-    let onFinishCallback: ((message: any) => Promise<void>) | undefined;
+    let onFinishCallback: ((message: Message) => Promise<void>) | undefined;
 
     // Mock useChat to capture the onFinish callback
-    mockUseChat.mockImplementation((options: any) => {
-      onFinishCallback = options.onFinish;
+    mockUseChat.mockImplementation((options: unknown) => {
+      onFinishCallback = (
+        options as { onFinish?: (message: Message) => Promise<void> }
+      )?.onFinish;
       return {
         messages: [],
         input: "",
@@ -119,7 +124,7 @@ describe("ChatUI onFinish callback", () => {
         setMessages: vi.fn(),
         append: vi.fn(),
         setInput: vi.fn(),
-      } as any;
+      } as unknown as ReturnType<typeof useChat>;
     });
 
     render(<ChatUI />);
@@ -140,13 +145,13 @@ describe("ChatUI onFinish callback", () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     // Call onFinish first time
-    await onFinishCallback!(testMessage);
+    await onFinishCallback!(testMessage as Message);
 
     // Call onFinish second time with same message ID
-    await onFinishCallback!(testMessage);
+    await onFinishCallback!(testMessage as Message);
 
     // Call onFinish third time with same message ID
-    await onFinishCallback!(testMessage);
+    await onFinishCallback!(testMessage as Message);
 
     // Should only log the message processing once
     const processedLogs = consoleSpy.mock.calls.filter((call) =>
@@ -159,10 +164,12 @@ describe("ChatUI onFinish callback", () => {
   });
 
   it("should process different message IDs separately", async () => {
-    let onFinishCallback: ((message: any) => Promise<void>) | undefined;
+    let onFinishCallback: ((message: Message) => Promise<void>) | undefined;
 
-    mockUseChat.mockImplementation((options: any) => {
-      onFinishCallback = options.onFinish;
+    mockUseChat.mockImplementation((options: unknown) => {
+      onFinishCallback = (
+        options as { onFinish?: (message: Message) => Promise<void> }
+      )?.onFinish;
       return {
         messages: [],
         input: "",
@@ -172,7 +179,7 @@ describe("ChatUI onFinish callback", () => {
         setMessages: vi.fn(),
         append: vi.fn(),
         setInput: vi.fn(),
-      } as any;
+      } as unknown as ReturnType<typeof useChat>;
     });
 
     render(<ChatUI />);
@@ -198,10 +205,10 @@ describe("ChatUI onFinish callback", () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     // Call onFinish with first message
-    await onFinishCallback!(firstMessage);
+    await onFinishCallback!(firstMessage as Message);
 
     // Call onFinish with second message (different ID)
-    await onFinishCallback!(secondMessage);
+    await onFinishCallback!(secondMessage as Message);
 
     // Should process both messages
     const processedLogs = consoleSpy.mock.calls.filter((call) =>

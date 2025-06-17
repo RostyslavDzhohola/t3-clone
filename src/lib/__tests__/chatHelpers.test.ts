@@ -131,8 +131,8 @@ describe("chatHelpers", () => {
     });
 
     it("should return false for non-string values", () => {
-      expect(isAnonymousChatId(123 as any)).toBe(false);
-      expect(isAnonymousChatId({} as any)).toBe(false);
+      expect(isAnonymousChatId(123 as never)).toBe(false);
+      expect(isAnonymousChatId({} as never)).toBe(false);
     });
   });
 

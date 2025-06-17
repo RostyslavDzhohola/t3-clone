@@ -22,8 +22,6 @@ export default function ChatContent({
   anonymousMessageCount,
   anonymousMessageLimit,
 }: ChatContentProps) {
-  const hasMessages = messages.length > 0;
-
   // Calculate remaining messages for anonymous users
   const remainingMessages =
     isAnonymous &&

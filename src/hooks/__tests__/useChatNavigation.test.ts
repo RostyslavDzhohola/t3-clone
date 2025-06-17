@@ -1,6 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { useChatNavigation } from "../useChatNavigation";
+import { Id } from "../../../convex/_generated/dataModel";
 import { mockPush } from "../../test/setup";
 
 // Mock Next.js navigation
@@ -24,8 +25,8 @@ vi.mock("next/navigation", async () => {
 // Mock data
 const mockUser = { id: "user123" };
 const mockChats = [
-  { _id: "chat1" as any, title: "First Chat" },
-  { _id: "chat2" as any, title: "Second Chat" },
+  { _id: "chat1" as Id<"chats">, title: "First Chat" },
+  { _id: "chat2" as Id<"chats">, title: "Second Chat" },
 ];
 const mockAnonymousChats = [
   {
@@ -351,7 +352,7 @@ describe("useChatNavigation", () => {
 
   describe("Message Management", () => {
     it("should clear messages when no chat is selected", () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useChatNavigation({
           user: mockUser,
           chats: [],
@@ -367,7 +368,7 @@ describe("useChatNavigation", () => {
     it("should not clear messages when chat is selected", () => {
       mockUsePathname.mockReturnValue("/chat/test-chat");
 
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useChatNavigation({
           user: mockUser,
           chats: mockChats,
