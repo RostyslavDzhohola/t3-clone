@@ -7,6 +7,7 @@ import { Search } from "lucide-react";
 import type { useUser } from "@clerk/nextjs"; // type-only
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Id } from "../../convex/_generated/dataModel";
+import DeleteChatDialog from "./DeleteChatDialog";
 
 interface Chat {
   _id: Id<"chats"> | string;
@@ -20,6 +21,7 @@ interface SidebarProps {
   isCreatingChat: boolean;
   onNewChat: () => void;
   onChatSelect: (chatId: Id<"chats"> | string) => void;
+  onDeleteChat?: (chatId: Id<"chats"> | string) => Promise<void>;
   isAnonymousLimitReached?: boolean;
 }
 
@@ -30,9 +32,11 @@ export default function Sidebar({
   isCreatingChat,
   onNewChat,
   onChatSelect,
+  onDeleteChat,
   isAnonymousLimitReached,
 }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
 
   // Filter chats based on search term
   const filteredChats = useMemo(() => {
@@ -41,6 +45,20 @@ export default function Sidebar({
       chat.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [chats, searchTerm]);
+
+  // Handle delete chat
+  const handleDeleteChat = async (chatId: Id<"chats"> | string) => {
+    if (!onDeleteChat) return;
+
+    setDeletingChatId(chatId as string);
+    try {
+      await onDeleteChat(chatId);
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+    } finally {
+      setDeletingChatId(null);
+    }
+  };
 
   return (
     <div className="flex flex-col w-60 border-r border-gray-200 bg-gray-50 p-4">
@@ -96,20 +114,28 @@ export default function Sidebar({
       </Button>
 
       {/* Chat List */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2 mb-4">
+      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-1 mb-2">
         {filteredChats?.map((chat) => (
-          <Button
+          <div
             key={chat._id}
-            variant="ghost"
-            onClick={() => onChatSelect(chat._id)}
-            className={`w-full justify-start text-left p-3 rounded-lg truncate ${
+            className={`group flex items-center justify-between p-1.5 rounded-lg cursor-pointer transition-colors ${
               currentChatId === chat._id
-                ? "bg-gray-200 text-gray-800"
+                ? "bg-white text-gray-900 shadow"
                 : "text-gray-700 hover:bg-gray-100"
             }`}
+            onClick={() => onChatSelect(chat._id)}
           >
-            <span className="truncate">{chat.title}</span>
-          </Button>
+            <span className="truncate flex-1 text-left text-sm">
+              {chat.title}
+            </span>
+            {onDeleteChat && (
+              <DeleteChatDialog
+                chatTitle={chat.title}
+                onDelete={() => handleDeleteChat(chat._id)}
+                isDeleting={deletingChatId === chat._id}
+              />
+            )}
+          </div>
         ))}
       </div>
 
@@ -127,7 +153,7 @@ export default function Sidebar({
         </SignedOut>
         <SignedIn>
           <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
-            <UserButton afterSignOutUrl="/" />
+            <UserButton />
             <span className="text-sm text-gray-700">Profile</span>
           </div>
         </SignedIn>

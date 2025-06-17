@@ -95,6 +95,24 @@ export default function ChatUI() {
   // request body changes) and re-fires `onFinish` for the same message.
   const lastProcessedAiMessageId = useRef<string | null>(null);
 
+  // Use refs to track anonymous counts to avoid dependencies in onFinish callback
+  const anonymousAiMessageCountRef = useRef(anonymousAiMessageCount);
+  const anonymousChatsRef = useRef(anonymousChats);
+  const currentAnonymousChatRef = useRef(currentAnonymousChat);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    anonymousAiMessageCountRef.current = anonymousAiMessageCount;
+  }, [anonymousAiMessageCount]);
+
+  useEffect(() => {
+    anonymousChatsRef.current = anonymousChats;
+  }, [anonymousChats]);
+
+  useEffect(() => {
+    currentAnonymousChatRef.current = currentAnonymousChat;
+  }, [currentAnonymousChat]);
+
   // Helper function to clear anonymous data
   const handleClearAnonymousData = () => {
     console.log("🧹 Clearing anonymous data from localStorage");
@@ -242,6 +260,7 @@ export default function ChatUI() {
   const createChat = useMutation(api.messages.createChat);
   const saveMessage = useMutation(api.messages.saveMessage);
   const updateChatTitle = useMutation(api.messages.updateChatTitle);
+  const deleteChat = useMutation(api.messages.deleteChat);
 
   const chats = useQuery(
     api.messages.getChats,
@@ -301,48 +320,41 @@ export default function ChatUI() {
         }
       } else if (!user) {
         // Save AI response to localStorage for anonymous users
-        // Increment AI message count
+        // Increment AI message count using refs to avoid dependencies
         console.log("🤖 AI response finished, incrementing anonymous AI count");
-        setAnonymousAiMessageCount((count) => {
-          const newCount = count + 1;
-          console.log("🔍 New anonymous AI count after increment:", newCount);
-          console.log(
-            "🔍 Anonymous messages remaining after this response:",
-            ANONYMOUS_MESSAGE_LIMIT - newCount
-          );
-          return newCount;
-        });
+        const newCount = anonymousAiMessageCountRef.current + 1;
+        console.log("🔍 New anonymous AI count after increment:", newCount);
+        console.log(
+          "🔍 Anonymous messages remaining after this response:",
+          ANONYMOUS_MESSAGE_LIMIT - newCount
+        );
+
+        // Update state
+        setAnonymousAiMessageCount(newCount);
 
         // Reset banner closed state so it reappears after AI response
         setBannerClosed(false);
 
-        setCurrentAnonymousChat((prevChat) => {
-          if (!prevChat) return prevChat;
+        // Use ref to get current chat state
+        const prevChat = currentAnonymousChatRef.current;
+        if (prevChat) {
           const updatedMessages = [...prevChat.messages, message];
           const updatedChat = { ...prevChat, messages: updatedMessages };
 
-          setAnonymousChats((prevChats) => {
-            const updatedChats = prevChats.map((chat) =>
-              chat.id === prevChat.id ? updatedChat : chat
-            );
-            setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-            return updatedChats;
-          });
+          // Update state using current ref values
+          const prevChats = anonymousChatsRef.current;
+          const updatedChats = prevChats.map((chat) =>
+            chat.id === prevChat.id ? updatedChat : chat
+          );
+          setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
+          setAnonymousChats(updatedChats);
+          setCurrentAnonymousChat(updatedChat);
 
           console.log("✅ AI message saved to localStorage");
-          return updatedChat;
-        });
+        }
       }
     },
-    [
-      user,
-      currentChatId,
-      saveMessage,
-      setAnonymousAiMessageCount,
-      setBannerClosed,
-      setCurrentAnonymousChat,
-      setAnonymousChats,
-    ]
+    [user, currentChatId, saveMessage] // Minimal dependencies
   );
 
   // Memoize the body to prevent useChat re-initialization
@@ -350,9 +362,8 @@ export default function ChatUI() {
     () => ({
       model: selectedModel.id,
       anonymous: !user,
-      anonymousMessageCount: !user ? anonymousAiMessageCount : undefined,
     }),
-    [selectedModel.id, user, anonymousAiMessageCount]
+    [selectedModel.id, user]
   );
 
   const {
@@ -515,6 +526,62 @@ export default function ChatUI() {
   const handleNewChat = async () => {
     console.log("🖱️ New Chat button clicked");
     await createNewChat();
+  };
+
+  // Handle Delete Chat (only for authenticated users)
+  const handleDeleteChat = async (chatId: Id<"chats"> | string) => {
+    if (!user) {
+      // For anonymous users, remove from localStorage
+      try {
+        const chatIdStr = chatId as string;
+        console.log("🗑️ Deleting anonymous chat:", chatIdStr);
+
+        // Remove from localStorage
+        const updatedChats = anonymousChats.filter(
+          (chat) => chat.id !== chatIdStr
+        );
+        setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
+        setAnonymousChats(updatedChats);
+
+        // If we're deleting the current chat, clear it
+        if (currentChatId === chatIdStr) {
+          setCurrentAnonymousChat(null);
+          setCurrentChatId(null);
+          setMessages([]);
+          localStorage.removeItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT);
+        }
+
+        console.log("✅ Anonymous chat deleted successfully");
+        toast.success("Chat deleted successfully");
+      } catch (error) {
+        console.error("❌ Failed to delete anonymous chat:", error);
+        toast.error("Failed to delete chat");
+      }
+      return;
+    }
+
+    // For authenticated users, use Convex mutation
+    try {
+      console.log("🗑️ Deleting chat:", chatId);
+      await deleteChat({
+        chatId: chatId as Id<"chats">,
+        userId: user.id,
+      });
+
+      // If we're deleting the current chat, clear it
+      if (currentChatId === chatId) {
+        setCurrentChatId(null);
+        setMessages([]);
+        // Navigate to home page for authenticated users
+        router.push("/");
+      }
+
+      console.log("✅ Chat deleted successfully");
+      toast.success("Chat deleted successfully");
+    } catch (error) {
+      console.error("❌ Failed to delete chat:", error);
+      toast.error("Failed to delete chat");
+    }
   };
 
   // Load messages when current chat changes
@@ -693,6 +760,7 @@ export default function ChatUI() {
         isCreatingChat={isCreatingChat}
         onNewChat={handleNewChat}
         onChatSelect={navigation.handleChatSelect}
+        onDeleteChat={handleDeleteChat}
         isAnonymousLimitReached={user ? undefined : isAnonymousLimitReached}
       />
       <ChatContent

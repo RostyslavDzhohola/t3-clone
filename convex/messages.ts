@@ -179,3 +179,53 @@ export const updateChatTitle = mutation({
     }
   },
 });
+
+// Delete a chat and all its associated messages
+export const deleteChat = mutation({
+  args: {
+    chatId: v.id("chats"),
+    userId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    console.log("🗑️ [CONVEX] deleteChat called with args:", args);
+
+    try {
+      // First, verify the chat exists and belongs to the user
+      const chat = await ctx.db.get(args.chatId);
+      if (!chat) {
+        console.error("❌ [CONVEX] Chat not found:", args.chatId);
+        throw new Error(`Chat not found: ${args.chatId}`);
+      }
+
+      if (chat.userId !== args.userId) {
+        console.error("❌ [CONVEX] Unauthorized access to chat:", args.chatId);
+        throw new Error("Unauthorized access to chat");
+      }
+
+      console.log("✅ [CONVEX] Chat found and authorized:", chat.title);
+
+      // Delete all messages in this chat
+      console.log("🗑️ [CONVEX] Deleting messages for chat...");
+      const messages = await ctx.db
+        .query("messages")
+        .withIndex("by_chat", (q) => q.eq("chatId", args.chatId))
+        .collect();
+
+      for (const message of messages) {
+        await ctx.db.delete(message._id);
+      }
+      console.log(`✅ [CONVEX] Deleted ${messages.length} messages`);
+
+      // Delete the chat itself
+      console.log("🗑️ [CONVEX] Deleting chat...");
+      await ctx.db.delete(args.chatId);
+
+      console.log("✅ [CONVEX] Chat deleted successfully");
+      return null;
+    } catch (error) {
+      console.error("❌ [CONVEX] Failed to delete chat:", error);
+      throw error;
+    }
+  },
+});
