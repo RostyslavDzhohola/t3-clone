@@ -69,6 +69,8 @@ export default function ChatUI({
     body: {
       model: selectedModel.id,
       chatId: user ? chatId : undefined,
+      anonymous: !user,
+      anonymousMessageCount: !user ? anonymousAiMessageCount : undefined,
     },
     initialMessages: user
       ? convertedMessages

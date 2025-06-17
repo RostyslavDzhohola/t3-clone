@@ -103,12 +103,16 @@ describe("ChatUI onFinish callback", () => {
       setNumberInStorage: vi.fn(),
       getObjectFromStorage: vi.fn(() => []),
       setObjectInStorage: vi.fn(),
+      getStringFromStorage: vi.fn(() => ""),
+      setStringInStorage: vi.fn(),
       clearAnonymousData: vi.fn(),
     }));
   });
 
-  it("should ignore duplicate onFinish calls with the same message ID", async () => {
+  it("should handle onFinish for anonymous users", async () => {
     let onFinishCallback: ((message: Message) => Promise<void>) | undefined;
+    const mockAddMessageToAnonymousChat = vi.fn();
+    const mockOnAnonymousAiMessageUpdate = vi.fn();
 
     // Mock useChat to capture the onFinish callback
     mockUseChat.mockImplementation((options: unknown) => {
@@ -127,7 +131,18 @@ describe("ChatUI onFinish callback", () => {
       } as unknown as ReturnType<typeof useChat>;
     });
 
-    render(<ChatUI />);
+    render(
+      <ChatUI
+        addMessageToAnonymousChat={mockAddMessageToAnonymousChat}
+        onAnonymousAiMessageUpdate={mockOnAnonymousAiMessageUpdate}
+        currentAnonymousChat={{
+          id: "anon_123",
+          title: "Test Chat",
+          messages: [],
+          createdAt: Date.now(),
+        }}
+      />
+    );
 
     // Wait for component to render and capture onFinish
     await waitFor(() => {
@@ -141,31 +156,30 @@ describe("ChatUI onFinish callback", () => {
       createdAt: new Date(),
     };
 
-    // Mock console.log to track calls
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-
-    // Call onFinish first time
+    // Call onFinish for anonymous user
     await onFinishCallback!(testMessage as Message);
 
-    // Call onFinish second time with same message ID
-    await onFinishCallback!(testMessage as Message);
-
-    // Call onFinish third time with same message ID
-    await onFinishCallback!(testMessage as Message);
-
-    // Should only log the message processing once
-    const processedLogs = consoleSpy.mock.calls.filter((call) =>
-      call[0]?.includes("🎯 onFinish called with message:")
+    // Should call the anonymous chat management functions
+    expect(mockAddMessageToAnonymousChat).toHaveBeenCalledWith(
+      testMessage,
+      "anon_123"
     );
-
-    expect(processedLogs).toHaveLength(1);
-
-    consoleSpy.mockRestore();
+    expect(mockOnAnonymousAiMessageUpdate).toHaveBeenCalledWith(1);
   });
 
-  it("should process different message IDs separately", async () => {
+  it("should not handle onFinish for authenticated users (server handles it)", async () => {
     let onFinishCallback: ((message: Message) => Promise<void>) | undefined;
+    const mockAddMessageToAnonymousChat = vi.fn();
+    const mockOnAnonymousAiMessageUpdate = vi.fn();
 
+    // Mock authenticated user
+    mockUseUser.mockReturnValue({
+      user: { id: "user_123" } as Partial<typeof mockUseUser>,
+      isLoaded: true,
+      isSignedIn: true,
+    } as ReturnType<typeof useUser>);
+
+    // Mock useChat to capture the onFinish callback
     mockUseChat.mockImplementation((options: unknown) => {
       onFinishCallback = (
         options as { onFinish?: (message: Message) => Promise<void> }
@@ -182,41 +196,31 @@ describe("ChatUI onFinish callback", () => {
       } as unknown as ReturnType<typeof useChat>;
     });
 
-    render(<ChatUI />);
+    render(
+      <ChatUI
+        addMessageToAnonymousChat={mockAddMessageToAnonymousChat}
+        onAnonymousAiMessageUpdate={mockOnAnonymousAiMessageUpdate}
+        chatId="test_chat_123"
+      />
+    );
 
+    // Wait for component to render and capture onFinish
     await waitFor(() => {
       expect(onFinishCallback).toBeDefined();
     });
 
-    const firstMessage = {
-      id: "ai-msg-1",
+    const testMessage = {
+      id: "ai-msg-123",
       role: "assistant",
-      content: "First response",
+      content: "Test response",
       createdAt: new Date(),
     };
 
-    const secondMessage = {
-      id: "ai-msg-2",
-      role: "assistant",
-      content: "Second response",
-      createdAt: new Date(),
-    };
+    // Call onFinish for authenticated user
+    await onFinishCallback!(testMessage as Message);
 
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-
-    // Call onFinish with first message
-    await onFinishCallback!(firstMessage as Message);
-
-    // Call onFinish with second message (different ID)
-    await onFinishCallback!(secondMessage as Message);
-
-    // Should process both messages
-    const processedLogs = consoleSpy.mock.calls.filter((call) =>
-      call[0]?.includes("🎯 onFinish called with message:")
-    );
-
-    expect(processedLogs).toHaveLength(2);
-
-    consoleSpy.mockRestore();
+    // Should NOT call anonymous chat management functions for authenticated users
+    expect(mockAddMessageToAnonymousChat).not.toHaveBeenCalled();
+    expect(mockOnAnonymousAiMessageUpdate).not.toHaveBeenCalled();
   });
 });

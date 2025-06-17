@@ -79,8 +79,7 @@ export function useChatLogic({
     anonymousAiMessageCountRef.current = anonymousAiMessageCount;
   }, [anonymousAiMessageCount]);
 
-  // Convex mutations and queries
-  const saveMessage = useMutation(api.messages.saveMessage);
+  // Convex mutations (only need updateChatTitle now)
   const updateChatTitle = useMutation(api.messages.updateChatTitle);
 
   // Load messages from Convex for authenticated users
@@ -105,31 +104,16 @@ export function useChatLogic({
 
   // Handle AI message finish callback
   const handleAiMessageFinish = async (message: Message) => {
-    // Prevent duplicate onFinish calls
-    if (lastProcessedAiMessageId.current === message.id) {
-      return;
-    }
-    lastProcessedAiMessageId.current = message.id;
-
-    if (user) {
-      // For authenticated users, save AI response to Convex
-      try {
-        if (chatId && typeof chatId === "string" && chatId.length > 10) {
-          await saveMessage({
-            chatId: chatId as Id<"chats">,
-            userId: user.id,
-            role: "assistant",
-            body: message.content,
-          });
-        }
-      } catch (error) {
-        console.error("Failed to save AI message:", error);
+    // Server now handles saving for authenticated users
+    if (!user) {
+      // Only handle anonymous users on client side
+      if (lastProcessedAiMessageId.current === message.id) {
+        return;
       }
-    } else {
-      // For anonymous users, use centralized chat management
+      lastProcessedAiMessageId.current = message.id;
+
       if (currentAnonymousChat && addMessageToAnonymousChat) {
         addMessageToAnonymousChat(message, currentAnonymousChat.id);
-        // Update anonymous AI message count
         onAnonymousAiMessageUpdate?.(anonymousAiMessageCountRef.current + 1);
       }
     }
@@ -156,35 +140,23 @@ export function useChatLogic({
       }
 
       if (user) {
-        // For authenticated users, save user message before AI flow
+        // Server will handle message saving
+        // Just handle chat title update if first message
         if (
           chatId &&
           typeof chatId === "string" &&
           chatId.length > 10 &&
+          messages.length === 0 &&
           input.trim()
         ) {
           try {
-            await saveMessage({
+            const title = generateChatTitle(input);
+            await updateChatTitle({
               chatId: chatId as Id<"chats">,
-              userId: user.id,
-              role: "user",
-              body: input,
+              title,
             });
-
-            // Update chat title if this is the first message
-            if (messages.length === 0) {
-              const title = generateChatTitle(input);
-              try {
-                await updateChatTitle({
-                  chatId: chatId as Id<"chats">,
-                  title,
-                });
-              } catch (error) {
-                console.error("Failed to update chat title:", error);
-              }
-            }
           } catch (error) {
-            console.error("Failed to save user message:", error);
+            console.error("Failed to update chat title:", error);
           }
         }
 

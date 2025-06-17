@@ -6,7 +6,6 @@ import {
   isAnonymousChatId,
   generateAnonymousChatId,
   isConvexChatId,
-  ANONYMOUS_STORAGE_KEYS,
   calculateRemainingMessages,
   isAnonymousLimitReached,
   getNumberFromStorage,
@@ -15,6 +14,7 @@ import {
   setObjectInStorage,
   clearAnonymousData,
 } from "../chatHelpers";
+import { ANONYMOUS_STORAGE_KEYS } from "../constants";
 
 // Mock localStorage
 const localStorageMock = {

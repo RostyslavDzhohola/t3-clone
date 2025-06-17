@@ -7,6 +7,13 @@ import {
   isModelAvailableForAnonymous,
 } from "@/lib/models";
 import { NextResponse } from "next/server";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../../convex/_generated/api";
+import { auth } from "@clerk/nextjs/server";
+import type { Id } from "../../../../convex/_generated/dataModel";
+
+// Initialize Convex client for server-side usage
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY!,
@@ -21,6 +28,8 @@ export async function POST(req: Request) {
     let selectedModelId: string | undefined;
     let isAnonymous: boolean = false;
     let anonymousMessageCount: number = 0;
+    let chatId: string | undefined;
+    let userMessage: string | undefined;
 
     try {
       const body = await req.json();
@@ -28,6 +37,13 @@ export async function POST(req: Request) {
       selectedModelId = body.model;
       isAnonymous = body.anonymous === true;
       anonymousMessageCount = body.anonymousMessageCount || 0;
+      chatId = body.chatId;
+
+      // Extract the latest user message for saving
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage && lastMessage.role === "user") {
+        userMessage = lastMessage.content as string;
+      }
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
@@ -44,6 +60,29 @@ export async function POST(req: Request) {
           { error: "Sorry, you've reached your rate limit" },
           { status: 429 }
         );
+      }
+    }
+
+    // Get user info for authenticated users
+    let userId: string | null = null;
+    if (!isAnonymous) {
+      const { userId: authUserId } = await auth();
+      userId = authUserId;
+    }
+
+    // Save user message to database (for authenticated users only)
+    if (!isAnonymous && userId && chatId && userMessage) {
+      try {
+        await convex.mutation(api.messages.saveMessage, {
+          chatId: chatId as Id<"chats">,
+          userId,
+          role: "user",
+          body: userMessage,
+        });
+        console.log("✅ User message saved to database");
+      } catch (error) {
+        console.error("❌ Failed to save user message:", error);
+        // Continue with AI response even if saving fails
       }
     }
 
@@ -98,6 +137,22 @@ export async function POST(req: Request) {
         ? "You are an AI assistant in the T3.1 Chat Clone application (Anonymous Mode). You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information."
         : "You are an AI assistant in the T3.1 Chat Clone application. You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
       temperature: 0.7,
+      onFinish: async (finishResult) => {
+        // Save AI response to database (for authenticated users only)
+        if (!isAnonymous && userId && chatId && finishResult.text) {
+          try {
+            await convex.mutation(api.messages.saveMessage, {
+              chatId: chatId as Id<"chats">,
+              userId,
+              role: "assistant",
+              body: finishResult.text,
+            });
+            console.log("✅ AI response saved to database");
+          } catch (error) {
+            console.error("❌ Failed to save AI response:", error);
+          }
+        }
+      },
     });
 
     return result.toDataStreamResponse();
