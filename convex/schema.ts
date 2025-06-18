@@ -21,6 +21,8 @@ export default defineSchema({
     streamId: v.string(),
     userId: v.string(),
     isActive: v.boolean(),
+    partialContent: v.optional(v.string()),
+    tokenCount: v.optional(v.number()),
   })
     .index("by_chat", ["chatId"])
     .index("by_stream", ["streamId"])
