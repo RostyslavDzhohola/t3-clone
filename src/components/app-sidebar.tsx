@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+
 import {
   Sidebar,
   SidebarContent,
@@ -97,7 +97,7 @@ export function AppSidebar({
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader>
         <div className="flex items-center justify-between px-2 py-1">
           <a
             href="https://github.com/RostyslavDzhohola/t3-clone"
@@ -133,9 +133,8 @@ export function AppSidebar({
           <Button
             onClick={handleNewChat}
             disabled={(!user && isAnonymousLimitReached) || isCreatingChat}
-            className="w-full mb-3 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
+            className="w-full mb-3 bg-gray-300 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
           >
-            <Plus className="w-4 h-4 mr-2" />
             {isCreatingChat ? "Creating..." : "New Chat"}
           </Button>
 
@@ -147,7 +146,7 @@ export function AppSidebar({
         </div>
 
         {/* Scrollable chat history section */}
-        <SidebarGroup className="flex-1 overflow-y-auto">
+        <SidebarGroup className="flex-1 overflow-y-auto scrollbar-hide">
           <SidebarHistory
             currentChatId={currentChatId}
             onChatSelect={onChatSelect}

@@ -33,7 +33,11 @@ export function SidebarHistoryItem({
       <SidebarMenuButton
         onClick={() => onChatSelect(chat._id as string)}
         isActive={isActive}
-        className="flex items-center justify-between w-full"
+        className={`flex items-center justify-between w-full ${
+          isActive
+            ? "!bg-gray-200 dark:!bg-gray-700 !text-gray-900 dark:!text-gray-100 !font-medium"
+            : ""
+        }`}
       >
         <span className="truncate flex-1 text-left">{chat.title}</span>
       </SidebarMenuButton>
