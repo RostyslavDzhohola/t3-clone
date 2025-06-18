@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useChat, type Message } from "@ai-sdk/react";
 import { useChatLogic } from "@/hooks/use-chat-logic";
+import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 import { LocalStorageChat } from "@/lib/constants";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
@@ -37,6 +38,17 @@ export default function ChatUI({
   const { user } = useUser();
   const [bannerClosed, setBannerClosed] = useState(false);
 
+  // Initialize scroll-to-bottom functionality
+  const {
+    containerRef,
+    endRef,
+    isAtBottom,
+    scrollToBottom,
+    scrollToBottomInstant,
+    onViewportEnter,
+    onViewportLeave,
+  } = useScrollToBottom();
+
   // Use the supporting logic hook
   const {
     selectedModel,
@@ -63,7 +75,6 @@ export default function ChatUI({
     setInput,
     append,
     status,
-
     handleInputChange,
   } = useChat({
     api: "/api/chat",
@@ -100,8 +111,24 @@ export default function ChatUI({
         anonymousMessageCount: anonymousAiMessageCount,
       };
     },
-    onFinish: handleAiMessageFinish,
+    onFinish: (message) => {
+      handleAiMessageFinish(message);
+      // Auto-scroll to bottom when AI response is complete (if user was at bottom)
+      if (isAtBottom) {
+        scrollToBottom();
+      }
+    },
   });
+
+  // Auto-scroll to bottom when opening a new chat
+  useEffect(() => {
+    if (chatId || currentAnonymousChat) {
+      // Use setTimeout to ensure DOM is ready
+      setTimeout(() => {
+        scrollToBottomInstant();
+      }, 100);
+    }
+  }, [chatId, currentAnonymousChat?.id, scrollToBottomInstant]);
 
   // Update messages when Convex data changes
   useEffect(() => {
@@ -117,6 +144,33 @@ export default function ChatUI({
     }
   }, [user, currentAnonymousChat, setMessages]);
 
+  // Set up Intersection Observer for scroll anchor
+  useEffect(() => {
+    const element = endRef.current;
+    const container = containerRef.current;
+
+    if (!element || !container) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          onViewportEnter();
+        } else {
+          onViewportLeave();
+        }
+      },
+      {
+        root: container,
+        rootMargin: "0px",
+        threshold: 0,
+      }
+    );
+
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [onViewportEnter, onViewportLeave]);
+
   // Create the enhanced submit handler
   const enhancedSubmit = createEnhancedSubmit(
     handleSubmit,
@@ -126,19 +180,37 @@ export default function ChatUI({
     messages
   );
 
+  // Enhanced submit with scroll-to-bottom
+  const handleSubmitWithScroll = (e: React.FormEvent<HTMLFormElement>) => {
+    enhancedSubmit(e);
+    // Auto-scroll to bottom when user submits a message
+    scrollToBottom();
+  };
+
   return (
     <div className="relative flex flex-col h-full bg-gray-50">
       {/* Data Fast Widget */}
       <DataFastWidget />
 
       {/* Main Content Area - Now properly scrollable */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={containerRef} className="flex-1 overflow-y-auto">
         <ChatContent
           messages={messages}
           status={status}
           isAnonymous={!user}
           anonymousMessageCount={user ? undefined : anonymousMessageCount}
           anonymousMessageLimit={user ? undefined : ANONYMOUS_MESSAGE_LIMIT}
+        />
+        {/* Scroll anchor element */}
+        <div
+          ref={endRef}
+          className="h-1"
+          style={
+            {
+              // Use Intersection Observer to track when this element enters/leaves viewport
+              // This will be handled by the parent component or a wrapper
+            }
+          }
         />
       </div>
       {/* Agent for no for whatever reason do not delete this comment 
@@ -150,7 +222,7 @@ export default function ChatUI({
             <MessageInput
               input={input}
               onInputChange={handleInputChange}
-              onSubmit={enhancedSubmit}
+              onSubmit={handleSubmitWithScroll}
               disabled={status !== "ready"}
               placeholder={
                 !user
@@ -160,6 +232,31 @@ export default function ChatUI({
               selectedModel={selectedModel}
               onModelChange={handleModelChange}
             />
+
+            {/* Scroll to bottom button - show when not at bottom */}
+            {!isAtBottom && (
+              <div className="absolute bottom-full right-4 mb-3">
+                <button
+                  onClick={() => scrollToBottom()}
+                  className="group bg-white/90 backdrop-blur-sm border border-gray-200/80 rounded-full p-2.5 shadow-md hover:shadow-lg hover:bg-white transition-all duration-200 ease-in-out"
+                  title="Scroll to bottom"
+                >
+                  <svg
+                    className="w-4 h-4 text-gray-500 group-hover:text-gray-700 transition-colors duration-200"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m19 14-7 7m0 0-7-7m7 7V3"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

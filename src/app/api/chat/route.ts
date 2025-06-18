@@ -225,7 +225,7 @@ export async function POST(req: Request) {
       temperature: 0.7,
       // 🔥 ADD SMOOTH STREAMING for better UI rendering
       experimental_transform: smoothStream({
-        delayInMs: 15, // Slightly faster than default 20ms for better UX
+        delayInMs: 10, // Slightly faster than default 20ms for better UX
         chunking: "word", // Release text word by word for natural reading flow
       }),
       onFinish: async (finishResult) => {
