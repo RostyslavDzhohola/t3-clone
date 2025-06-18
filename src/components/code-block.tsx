@@ -25,6 +25,36 @@ export function CodeBlock({
     // Get the code content as string
     const codeContent = String(children).replace(/\n$/, "");
 
+    // Render plain text blocks with minimal styling (no header, no copy button)
+    const isPlainText = ["text", "plaintext", "txt"].includes(language);
+
+    if (isPlainText) {
+      const isSingleLine = !codeContent.includes("\n");
+      const shouldInline = isSingleLine && codeContent.length <= 60;
+
+      // Treat very small snippets as inline to keep markdown flow smooth
+      if (shouldInline) {
+        return (
+          <code
+            className="bg-gray-100 px-1.5 py-0.5 rounded-md text-sm font-mono text-gray-800 border border-gray-200"
+            {...props}
+          >
+            {codeContent}
+          </code>
+        );
+      }
+
+      // Otherwise render as a minimal block
+      return (
+        <pre
+          className="my-4 overflow-x-auto rounded-md bg-gray-100 p-4 text-sm font-mono text-gray-800 border border-gray-200"
+          {...props}
+        >
+          {codeContent}
+        </pre>
+      );
+    }
+
     return (
       <div className="my-6 overflow-hidden rounded-lg border border-gray-200 shadow-sm">
         {/* Header with language and copy button */}
