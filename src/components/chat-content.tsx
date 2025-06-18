@@ -1,10 +1,10 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import React, { memo } from "react";
-import { type Message } from "@ai-sdk/react";
+import React from "react";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion } from "framer-motion";
+import ChatMessage from "@/components/chat-message";
 
 // import { toast } from "sonner";
 
@@ -15,35 +15,6 @@ interface ChatContentProps {
   anonymousMessageCount?: number;
   anonymousMessageLimit?: number;
 }
-
-// Memoized message component for performance
-const MessageBubble = memo(({ message }: { message: Message }) => {
-  const isUser = message.role === "user";
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
-    >
-      <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-          isUser ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-900 border"
-        }`}
-      >
-        <div className="whitespace-pre-wrap break-words">
-          {/* This directly renders the message content, allowing smooth streaming */}
-          {typeof message.content === "string"
-            ? message.content
-            : message.content}
-        </div>
-      </div>
-    </motion.div>
-  );
-});
-
-MessageBubble.displayName = "MessageBubble";
 
 export default function ChatContent({
   messages,
@@ -72,8 +43,12 @@ ChatContentProps) {
     <div className="w-full max-w-3xl mx-auto px-4 py-6 pb-32">
       <div className="space-y-4">
         {/* Render all messages - this enables smooth streaming! */}
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+        {messages.map((message, index) => (
+          <ChatMessage
+            key={message.id}
+            message={message}
+            isLastMessage={index === messages.length - 1}
+          />
         ))}
 
         {/* Show typing indicator when streaming */}

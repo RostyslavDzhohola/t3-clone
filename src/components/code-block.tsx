@@ -1,34 +1,62 @@
 "use client";
 
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { CopyButton } from "@/components/copy-button";
+
 interface CodeBlockProps {
-  node: any;
+  node?: unknown;
   inline: boolean;
-  className: string;
-  children: any;
+  className?: string;
+  children: React.ReactNode;
 }
 
 export function CodeBlock({
-  node,
   inline,
-  className,
+  className = "",
   children,
   ...props
 }: CodeBlockProps) {
   if (!inline) {
+    // Extract language from className (format: "language-js")
+    const match = /language-(\w+)/.exec(className);
+    const language = match ? match[1] : "text";
+
+    // Get the code content as string
+    const codeContent = String(children).replace(/\n$/, "");
+
     return (
-      <div className="not-prose flex flex-col">
-        <pre
+      <div className="relative my-4 overflow-hidden rounded-lg border border-gray-200">
+        {/* Header with language and copy button */}
+        <div className="flex items-center justify-between px-4 py-2 bg-gray-200 border-b border-gray-300">
+          <span className="text-xs font-medium text-gray-600 lowercase tracking-wide">
+            {language}
+          </span>
+          <CopyButton text={codeContent} />
+        </div>
+
+        {/* Code content with syntax highlighting */}
+        <SyntaxHighlighter
+          language={language}
+          style={oneLight}
+          customStyle={{
+            margin: 0,
+            borderRadius: 0,
+            fontSize: "0.875rem",
+            lineHeight: "1.5",
+          }}
+          showLineNumbers={false}
+          wrapLines={true}
           {...props}
-          className={`text-sm w-full overflow-x-auto dark:bg-zinc-900 p-4 border border-zinc-200 dark:border-zinc-700 rounded-xl dark:text-zinc-50 text-zinc-900`}
         >
-          <code className="whitespace-pre-wrap break-words">{children}</code>
-        </pre>
+          {codeContent}
+        </SyntaxHighlighter>
       </div>
     );
   } else {
     return (
       <code
-        className={`${className} text-sm bg-zinc-100 dark:bg-zinc-800 py-0.5 px-1 rounded-md`}
+        className="text-sm bg-gray-100 text-gray-800 py-1 px-2 rounded-md font-mono border border-gray-200"
         {...props}
       >
         {children}
