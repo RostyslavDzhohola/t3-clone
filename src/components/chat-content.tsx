@@ -129,7 +129,7 @@ ChatContentProps) {
       ref={contentRef}
       className={`w-full mx-auto px-4 py-8 ${
         status === "submitted" || status === "streaming"
-          ? "pb-[80vh]" // Immediately jump to 80vh when message is submitted
+          ? "pb-[600px]" // Immediately jump to 80vh when message is submitted
           : status === "ready" && currentDelta > 800
           ? "pb-32" // Only reset to normal padding if THIS message was long
           : "pb-[80vh]" // Default to extended padding for all other cases
