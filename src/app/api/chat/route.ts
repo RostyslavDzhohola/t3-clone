@@ -4,6 +4,7 @@ import {
   convertToCoreMessages,
   appendClientMessage,
   appendResponseMessages,
+  smoothStream,
   type CoreMessage,
 } from "ai";
 import { type Message } from "@ai-sdk/react";
@@ -222,17 +223,66 @@ export async function POST(req: Request) {
         ? "You are an AI assistant in the T3.1 Chat Clone application (Anonymous Mode). You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information."
         : "You are an AI assistant in the T3.1 Chat Clone application. You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
       temperature: 0.7,
+      // 🔥 ADD SMOOTH STREAMING for better UI rendering
+      experimental_transform: smoothStream({
+        delayInMs: 15, // Slightly faster than default 20ms for better UX
+        chunking: "word", // Release text word by word for natural reading flow
+      }),
       onFinish: async (finishResult) => {
         // Save AI response to database (for authenticated users only)
-        if (!isAnonymous && userId && chatId && finishResult.text) {
+        if (!isAnonymous && userId && chatId) {
           try {
-            await convex.mutation(api.messages.saveMessage, {
-              chatId: chatId as Id<"chats">,
-              userId,
-              role: "assistant",
-              body: finishResult.text,
+            // 🔥 APPEND RESPONSE MESSAGES - Enhanced for Future Tool Calls
+            //
+            // This implementation prepares for future AI function calling capabilities:
+            // 1. Uses appendResponseMessages to properly combine conversation history with AI responses
+            // 2. Preserves the full message structure including potential tool calls, function calls, etc.
+            // 3. Currently saves text response for compatibility, but structure is ready for:
+            //    - Tool call messages (function_call type)
+            //    - Tool result messages (tool_result type)
+            //    - Multi-modal content (images, files, etc.)
+            //    - Structured data and metadata
+            // 4. Future enhancement: Save full updatedMessages array to support conversation resume
+            //    with complete context including tool interactions
+            const updatedMessages = appendResponseMessages({
+              messages: messagesToSend.map((msg, index) => ({
+                id: `msg-${index}`,
+                role: msg.role as "user" | "assistant",
+                content:
+                  typeof msg.content === "string"
+                    ? msg.content
+                    : msg.content
+                        ?.map((part) => (part.type === "text" ? part.text : ""))
+                        .join("") || "",
+              })),
+              responseMessages: finishResult.response.messages,
             });
-            console.log("✅ [SERVER] AI response saved to database");
+
+            // For now, we'll still save just the text response to maintain compatibility
+            // In the future, this will be enhanced to save the full message structure
+            // including tool calls, function calls, and richer content types
+            if (finishResult.text) {
+              await convex.mutation(api.messages.saveMessage, {
+                chatId: chatId as Id<"chats">,
+                userId,
+                role: "assistant",
+                body: finishResult.text,
+              });
+              console.log("✅ [SERVER] AI response saved to database");
+              console.log("🔥 [SERVER] appendResponseMessages processed:", {
+                originalMessageCount: messagesToSend.length,
+                updatedMessageCount: updatedMessages.length,
+                responseMessageCount: finishResult.response.messages.length,
+                responseMessageTypes: finishResult.response.messages.map(
+                  (msg) => msg.role
+                ),
+                hasToolCalls: finishResult.response.messages.some(
+                  (msg) =>
+                    Array.isArray(msg.content) &&
+                    msg.content.some((part) => part.type === "tool-call")
+                ),
+              });
+            }
           } catch (error) {
             console.error("❌ [SERVER] Failed to save AI response:", error);
           }

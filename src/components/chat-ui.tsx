@@ -57,15 +57,17 @@ export default function ChatUI({
   // Set up useChat hook with server-side history management
   const {
     messages,
+    setMessages,
+    handleSubmit,
     input,
     setInput,
     append,
-    handleInputChange,
-    handleSubmit,
     status,
-    setMessages,
+
+    handleInputChange,
   } = useChat({
     api: "/api/chat",
+    experimental_throttle: 100,
     body: {
       model: selectedModel.id,
       chatId: user ? chatId : undefined,
