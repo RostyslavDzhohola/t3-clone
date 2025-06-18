@@ -54,7 +54,7 @@ export default function ChatUI({
     currentAnonymousChat,
   });
 
-  // Set up useChat hook directly in the component
+  // Set up useChat hook with server-side history management
   const {
     messages,
     input,
@@ -75,6 +75,29 @@ export default function ChatUI({
     initialMessages: user
       ? convertedMessages
       : currentAnonymousChat?.messages || [],
+    // 🔥 KEY CHANGE: Only send the new user message to server, not full history
+    experimental_prepareRequestBody: ({ messages }) => {
+      // For authenticated users with chatId: only send the new message
+      if (user && chatId) {
+        const lastMessage = messages[messages.length - 1];
+        return {
+          // Send only the content of the new user message
+          newMessage: lastMessage,
+          model: selectedModel.id,
+          chatId: chatId,
+          anonymous: false,
+        };
+      }
+
+      // For anonymous users: send all messages (no database persistence)
+      return {
+        messages,
+        model: selectedModel.id,
+        chatId: undefined,
+        anonymous: true,
+        anonymousMessageCount: anonymousAiMessageCount,
+      };
+    },
     onFinish: handleAiMessageFinish,
   });
 

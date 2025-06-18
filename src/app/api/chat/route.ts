@@ -1,5 +1,11 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { streamText, type CoreMessage } from "ai";
+import {
+  streamText,
+  convertToCoreMessages,
+  appendClientMessage,
+  type CoreMessage,
+} from "ai";
+import { type Message } from "@ai-sdk/react";
 import {
   getModelById,
   getDefaultModel,
@@ -24,25 +30,43 @@ const ANONYMOUS_MESSAGE_LIMIT = 10;
 export async function POST(req: Request) {
   try {
     // Parse and validate request body
-    let messages: CoreMessage[];
+    let clientMessages: Message[] | undefined;
+    let newUserMessage: Message | undefined;
     let selectedModelId: string | undefined;
     let isAnonymous: boolean = false;
     let anonymousMessageCount: number = 0;
     let chatId: string | undefined;
-    let userMessage: string | undefined;
 
     try {
       const body = await req.json();
-      messages = body.messages;
-      selectedModelId = body.model;
-      isAnonymous = body.anonymous === true;
-      anonymousMessageCount = body.anonymousMessageCount || 0;
-      chatId = body.chatId;
 
-      // Extract the latest user message for saving
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage && lastMessage.role === "user") {
-        userMessage = lastMessage.content as string;
+      // Handle the new request format from experimental_prepareRequestBody
+      if (body.newMessage) {
+        // New format: server-side history management for authenticated users
+        newUserMessage = body.newMessage;
+        selectedModelId = body.model;
+        isAnonymous = body.anonymous;
+        chatId = body.chatId;
+        console.log(
+          "📦 [SERVER] New format - authenticated user with chatId:",
+          chatId
+        );
+      } else {
+        // Legacy format: anonymous users or fallback
+        clientMessages = body.messages;
+        selectedModelId = body.model;
+        isAnonymous = body.anonymous === true;
+        anonymousMessageCount = body.anonymousMessageCount || 0;
+        chatId = body.chatId;
+
+        // Extract the latest user message for consistency
+        if (clientMessages && clientMessages.length > 0) {
+          const lastMessage = clientMessages[clientMessages.length - 1];
+          if (lastMessage && lastMessage.role === "user") {
+            newUserMessage = lastMessage;
+          }
+        }
+        console.log("📦 [SERVER] Legacy format - anonymous or fallback");
       }
     } catch {
       return NextResponse.json(
@@ -70,20 +94,80 @@ export async function POST(req: Request) {
       userId = authUserId;
     }
 
-    // Save user message to database (for authenticated users only)
-    if (!isAnonymous && userId && chatId && userMessage) {
+    // Prepare messages for AI processing
+    let messagesToSend: CoreMessage[] = [];
+
+    if (!isAnonymous && userId && chatId && newUserMessage) {
       try {
+        // 🔥 SERVER-SIDE HISTORY MANAGEMENT FOR AUTHENTICATED USERS
+        console.log(
+          "📥 [SERVER] Loading previous messages from database for chat:",
+          chatId
+        );
+
+        const previousMessages = await convex.query(api.messages.getMessages, {
+          chatId: chatId as Id<"chats">,
+        });
+
+        console.log(
+          "✅ [SERVER] Loaded",
+          previousMessages.length,
+          "previous messages"
+        );
+
+        // Convert Convex messages to Message format
+        const previousUIMessages: Message[] = previousMessages.map(
+          (msg, index) => ({
+            id: `msg-${index}`, // Generate IDs for UI messages
+            role: msg.role as "user" | "assistant",
+            content: msg.body,
+          })
+        );
+
+        // 🔥 Use appendClientMessage to combine database history with new user message
+        const combinedUIMessages = appendClientMessage({
+          messages: previousUIMessages,
+          message: newUserMessage,
+        });
+
+        // Convert combined UI messages to CoreMessage format for streamText
+        messagesToSend = convertToCoreMessages(combinedUIMessages);
+
+        console.log(
+          "🔄 [SERVER] Combined",
+          previousUIMessages.length,
+          "previous messages with new user message"
+        );
+        console.log(
+          "📤 [SERVER] Total messages to send to AI:",
+          messagesToSend.length
+        );
+
+        // Save the new user message to database
         await convex.mutation(api.messages.saveMessage, {
           chatId: chatId as Id<"chats">,
           userId,
           role: "user",
-          body: userMessage,
+          body: newUserMessage.content as string,
         });
-        console.log("✅ User message saved to database");
+        console.log("✅ [SERVER] User message saved to database");
       } catch (error) {
-        console.error("❌ Failed to save user message:", error);
-        // Continue with AI response even if saving fails
+        console.error(
+          "❌ [SERVER] Failed to load previous messages or save user message:",
+          error
+        );
+        // Fallback to using just the new message if database operations fail
+        messagesToSend = convertToCoreMessages([newUserMessage]);
       }
+    } else if (clientMessages) {
+      // 🔥 ANONYMOUS USERS: use client messages directly (no database persistence)
+      messagesToSend = convertToCoreMessages(clientMessages);
+      console.log("📤 [SERVER] Using client messages directly (anonymous)");
+    } else {
+      return NextResponse.json(
+        { error: "No messages provided" },
+        { status: 400 }
+      );
     }
 
     // Use selected model or fallback to default
@@ -129,10 +213,10 @@ export async function POST(req: Request) {
 
     const modelId = selectedModel.id;
 
-    // Call streamText with error handling
+    // Call streamText with the properly prepared messages
     const result = streamText({
       model: openrouter(modelId),
-      messages,
+      messages: messagesToSend, // Now contains server-verified conversation history
       system: isAnonymous
         ? "You are an AI assistant in the T3.1 Chat Clone application (Anonymous Mode). You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information."
         : "You are an AI assistant in the T3.1 Chat Clone application. You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
@@ -147,9 +231,9 @@ export async function POST(req: Request) {
               role: "assistant",
               body: finishResult.text,
             });
-            console.log("✅ AI response saved to database");
+            console.log("✅ [SERVER] AI response saved to database");
           } catch (error) {
-            console.error("❌ Failed to save AI response:", error);
+            console.error("❌ [SERVER] Failed to save AI response:", error);
           }
         }
       },
