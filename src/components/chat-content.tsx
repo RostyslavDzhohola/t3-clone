@@ -6,7 +6,7 @@ import { type Message } from "@ai-sdk/react";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion } from "framer-motion";
 
-import { toast } from "sonner";
+// import { toast } from "sonner";
 
 interface ChatContentProps {
   messages: Array<UIMessage>;
