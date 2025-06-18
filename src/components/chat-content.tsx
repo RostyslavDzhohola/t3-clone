@@ -26,6 +26,20 @@ ChatContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const previousScrollHeightRef = useRef<number>(0);
   const [currentDelta, setCurrentDelta] = useState<number>(0);
+  const [showWelcome, setShowWelcome] = useState<boolean>(false);
+
+  // Add delay for welcome message to wait for potential message loading
+  useEffect(() => {
+    if (messages.length === 0) {
+      const timer = setTimeout(() => {
+        setShowWelcome(true);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    } else {
+      setShowWelcome(false);
+    }
+  }, [messages.length]);
 
   // Calculate and log scroll dimensions after status changes and message updates
   useEffect(() => {
@@ -74,10 +88,22 @@ ChatContentProps) {
     }
   }, [status]);
 
-  // SIMPLE: Just check status for immediate 80vh jump
-  // TODO: Fix so it doesn't show welcome message if we're in the chat window that's still loading the chats from the database.
-  // Show welcome screen when no messages
-  if (messages.length === 0) {
+  // Show welcome screen when no messages and after delay
+  if (messages.length === 0 && !showWelcome) {
+    return (
+      <div
+        ref={contentRef}
+        className="w-full max-w-3xl mx-auto px-4 py-8 pb-32"
+      >
+        {/* Empty div to maintain layout while waiting */}
+        <div className="flex items-center justify-center h-[60vh]">
+          {/* Could add a subtle loading indicator here if desired */}
+        </div>
+      </div>
+    );
+  }
+
+  if (messages.length === 0 && showWelcome) {
     return (
       // Outer container: centers the welcome screen horizontally with max width and padding
       <div
