@@ -29,5 +29,14 @@ Object.defineProperty(window, "localStorage", {
   writable: true,
 });
 
+// Mock IntersectionObserver
+const mockIntersectionObserver = vi.fn();
+mockIntersectionObserver.mockReturnValue({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+});
+window.IntersectionObserver = mockIntersectionObserver;
+
 // Export mocks for use in tests
 export { mockPush, mockReplace };
