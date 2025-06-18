@@ -9,7 +9,6 @@ import { LocalStorageChat } from "@/lib/constants";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
 import RemainingLimitBanner from "./remaining-limit-banner";
-import DataFastWidget from "./data-fast-widget";
 
 interface ChatUIProps {
   chatId?: string;
@@ -186,9 +185,6 @@ export default function ChatUI({
 
   return (
     <div className="relative flex flex-col h-full bg-gray-50">
-      {/* Data Fast Widget */}
-      <DataFastWidget />
-
       {/* Main Content Area - Now properly scrollable */}
       <div ref={containerRef} className="flex-1 overflow-y-auto">
         <ChatContent

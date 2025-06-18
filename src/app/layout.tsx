@@ -6,6 +6,7 @@ import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "./ConvexClientProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { DataFastWidget } from "@/components";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -35,7 +36,10 @@ export default function RootLayout({
           />
         </head>
         <body className={figtree.className}>
-          <ConvexClientProvider>{children}</ConvexClientProvider>
+          <ConvexClientProvider>
+            <DataFastWidget />
+            {children}
+          </ConvexClientProvider>
           <Toaster />
         </body>
       </html>
