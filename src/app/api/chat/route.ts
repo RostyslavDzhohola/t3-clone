@@ -6,6 +6,7 @@ import {
   appendResponseMessages,
   smoothStream,
   createDataStream,
+  generateId,
   type CoreMessage,
 } from "ai";
 import { type Message } from "@ai-sdk/react";
@@ -20,10 +21,8 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
 import { auth } from "@clerk/nextjs/server";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import {
-  createResumableStreamContext,
-  type ResumableStreamContext,
-} from "resumable-stream";
+import { createResumableStreamContext } from "resumable-stream";
+import { after } from "next/server";
 
 // Initialize Convex client for server-side usage
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -33,6 +32,11 @@ const openrouter = createOpenRouter({
 });
 
 const ANONYMOUS_MESSAGE_LIMIT = 10;
+
+// Create resumable stream context
+const streamContext = createResumableStreamContext({
+  waitUntil: after,
+});
 
 export async function POST(req: Request) {
   try {
@@ -220,87 +224,226 @@ export async function POST(req: Request) {
 
     const modelId = selectedModel.id;
 
-    // Call streamText with the properly prepared messages
-    const result = streamText({
-      model: openrouter(modelId),
-      messages: messagesToSend, // Now contains server-verified conversation history
-      system: isAnonymous
-        ? "You are an AI assistant in the T3.1 Chat Clone application (Anonymous Mode). You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information."
-        : "You are an AI assistant in the T3.1 Chat Clone application. You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
-      temperature: 0.7,
-      // 🔥 ADD SMOOTH STREAMING for better UI rendering
-      experimental_transform: smoothStream({
-        delayInMs: 10, // Slightly faster than default 20ms for better UX
-        chunking: "word", // Release text word by word for natural reading flow
-      }),
-      onFinish: async (finishResult) => {
-        // Save AI response to database (for authenticated users only)
-        if (!isAnonymous && userId && chatId) {
-          try {
-            // 🔥 APPEND RESPONSE MESSAGES - Enhanced for Future Tool Calls
-            //
-            // This implementation prepares for future AI function calling capabilities:
-            // 1. Uses appendResponseMessages to properly combine conversation history with AI responses
-            // 2. Preserves the full message structure including potential tool calls, function calls, etc.
-            // 3. Currently saves text response for compatibility, but structure is ready for:
-            //    - Tool call messages (function_call type)
-            //    - Tool result messages (tool_result type)
-            //    - Multi-modal content (images, files, etc.)
-            //    - Structured data and metadata
-            // 4. Future enhancement: Save full updatedMessages array to support conversation resume
-            //    with complete context including tool interactions
-            const updatedMessages = appendResponseMessages({
-              messages: messagesToSend.map((msg, index) => ({
-                id: `msg-${index}`,
-                role: msg.role as "user" | "assistant",
-                content:
-                  typeof msg.content === "string"
-                    ? msg.content
-                    : msg.content
-                        ?.map((part) => (part.type === "text" ? part.text : ""))
-                        .join("") || "",
-              })),
-              responseMessages: finishResult.response.messages,
-            });
+    // 🔥 RESUMABLE STREAMS: For authenticated users only
+    if (!isAnonymous && userId && chatId) {
+      // Generate a unique stream ID for this generation
+      const streamId = generateId();
 
-            // For now, we'll still save just the text response to maintain compatibility
-            // In the future, this will be enhanced to save the full message structure
-            // including tool calls, function calls, and richer content types
-            if (finishResult.text) {
-              await convex.mutation(api.messages.saveMessage, {
-                chatId: chatId as Id<"chats">,
-                userId,
-                role: "assistant",
-                body: finishResult.text,
-              });
-              console.log("✅ [SERVER] AI response saved to database");
-              console.log("🔥 [SERVER] appendResponseMessages processed:", {
-                originalMessageCount: messagesToSend.length,
-                updatedMessageCount: updatedMessages.length,
-                responseMessageCount: finishResult.response.messages.length,
-                responseMessageTypes: finishResult.response.messages.map(
-                  (msg) => msg.role
-                ),
-                hasToolCalls: finishResult.response.messages.some(
-                  (msg) =>
-                    Array.isArray(msg.content) &&
-                    msg.content.some((part) => part.type === "tool-call")
-                ),
-              });
-            }
-          } catch (error) {
-            console.error("❌ [SERVER] Failed to save AI response:", error);
-          }
-        }
-      },
-    });
+      // Record this new stream so we can resume later
+      await convex.mutation(api.messages.appendStreamId, {
+        chatId: chatId as Id<"chats">,
+        streamId,
+        userId,
+      });
 
-    return result.toDataStreamResponse();
+      console.log("🎬 [SERVER] Created resumable stream:", streamId);
+
+      // Build the data stream that will emit tokens
+      const stream = createDataStream({
+        execute: (dataStream) => {
+          const result = streamText({
+            model: openrouter(modelId),
+            messages: messagesToSend,
+            system:
+              "You are an AI assistant in the T3.1 Chat Clone application. You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
+            temperature: 0.7,
+            // 🔥 ADD SMOOTH STREAMING for better UI rendering
+            experimental_transform: smoothStream({
+              delayInMs: 10,
+              chunking: "word",
+            }),
+            onFinish: async (finishResult) => {
+              try {
+                // 🔥 APPEND RESPONSE MESSAGES - Enhanced for Future Tool Calls
+                //
+                // This implementation prepares for future AI function calling capabilities:
+                // 1. Uses appendResponseMessages to properly combine conversation history with AI responses
+                // 2. Preserves the full message structure including potential tool calls, function calls, etc.
+                // 3. Currently saves text response for compatibility, but structure is ready for:
+                //    - Tool call messages (function_call type)
+                //    - Tool result messages (tool_result type)
+                //    - Multi-modal content (images, files, etc.)
+                //    - Structured data and metadata
+                // 4. Future enhancement: Save full updatedMessages array to support conversation resume
+                //    with complete context including tool interactions
+                const updatedMessages = appendResponseMessages({
+                  messages: messagesToSend.map((msg, index) => ({
+                    id: `msg-${index}`,
+                    role: msg.role as "user" | "assistant",
+                    content:
+                      typeof msg.content === "string"
+                        ? msg.content
+                        : msg.content
+                            ?.map((part) =>
+                              part.type === "text" ? part.text : ""
+                            )
+                            .join("") || "",
+                  })),
+                  responseMessages: finishResult.response.messages,
+                });
+
+                // For now, we'll still save just the text response to maintain compatibility
+                // In the future, this will be enhanced to save the full message structure
+                // including tool calls, function calls, and richer content types
+                if (finishResult.text) {
+                  await convex.mutation(api.messages.saveMessage, {
+                    chatId: chatId as Id<"chats">,
+                    userId,
+                    role: "assistant",
+                    body: finishResult.text,
+                  });
+                  console.log("✅ [SERVER] AI response saved to database");
+                  console.log("🔥 [SERVER] appendResponseMessages processed:", {
+                    originalMessageCount: messagesToSend.length,
+                    updatedMessageCount: updatedMessages.length,
+                    responseMessageCount: finishResult.response.messages.length,
+                    responseMessageTypes: finishResult.response.messages.map(
+                      (msg) => msg.role
+                    ),
+                    hasToolCalls: finishResult.response.messages.some(
+                      (msg) =>
+                        Array.isArray(msg.content) &&
+                        msg.content.some((part) => part.type === "tool-call")
+                    ),
+                  });
+                }
+
+                // Mark stream as inactive when complete
+                await convex.mutation(api.messages.markStreamInactive, {
+                  streamId,
+                });
+                console.log("🏁 [SERVER] Stream marked as complete:", streamId);
+              } catch (error) {
+                console.error("❌ [SERVER] Failed to save AI response:", error);
+              }
+            },
+          });
+
+          // Merge the result into the data stream
+          result.mergeIntoDataStream(dataStream);
+        },
+      });
+
+      // Return a resumable stream to the client
+      return new Response(
+        await streamContext.resumableStream(streamId, () => stream)
+      );
+    } else {
+      // 🔥 ANONYMOUS USERS: Use regular streaming (no resumability)
+      const result = streamText({
+        model: openrouter(modelId),
+        messages: messagesToSend,
+        system:
+          "You are an AI assistant in the T3.1 Chat Clone application (Anonymous Mode). You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
+        temperature: 0.7,
+        // 🔥 ADD SMOOTH STREAMING for better UI rendering
+        experimental_transform: smoothStream({
+          delayInMs: 10,
+          chunking: "word",
+        }),
+      });
+
+      return result.toDataStreamResponse();
+    }
   } catch (error) {
     console.error("Error in chat API:", error);
     return NextResponse.json(
       { error: "Internal server error occurred while processing your request" },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * GET handler for resuming chat streams
+ */
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const chatId = searchParams.get("chatId");
+
+    if (!chatId) {
+      return new Response("chatId is required", { status: 400 });
+    }
+
+    // Get user info for authenticated users only
+    const { userId } = await auth();
+    if (!userId) {
+      return new Response("Authentication required for stream resumption", {
+        status: 401,
+      });
+    }
+
+    // Load stream IDs for this chat
+    const streamIds = await convex.query(api.messages.loadStreams, {
+      chatId: chatId as Id<"chats">,
+    });
+
+    if (!streamIds.length) {
+      return new Response("No streams found", { status: 404 });
+    }
+
+    const recentStreamId = streamIds.at(-1);
+
+    if (!recentStreamId) {
+      return new Response("No recent stream found", { status: 404 });
+    }
+
+    console.log("🔄 [SERVER] Attempting to resume stream:", recentStreamId);
+
+    // Create an empty data stream as fallback
+    const emptyDataStream = createDataStream({
+      execute: () => {},
+    });
+
+    // Try to resume the stream
+    const stream = await streamContext.resumableStream(
+      recentStreamId,
+      () => emptyDataStream
+    );
+
+    if (stream) {
+      console.log("✅ [SERVER] Successfully resumed stream:", recentStreamId);
+      return new Response(stream, { status: 200 });
+    }
+
+    /*
+     * For when the generation is "active" during SSR but the
+     * resumable stream has concluded after reaching this point.
+     */
+    console.log("🔚 [SERVER] Stream has concluded, loading last message");
+
+    const messages = await convex.query(api.messages.getMessages, {
+      chatId: chatId as Id<"chats">,
+    });
+
+    const mostRecentMessage = messages.at(-1);
+
+    if (!mostRecentMessage || mostRecentMessage.role !== "assistant") {
+      console.log("📭 [SERVER] No recent assistant message found");
+      return new Response(emptyDataStream, { status: 200 });
+    }
+
+    console.log("📬 [SERVER] Returning completed message");
+
+    // Create a stream with the completed message
+    const streamWithMessage = createDataStream({
+      execute: (buffer) => {
+        buffer.writeData({
+          type: "append-message",
+          message: JSON.stringify({
+            id: mostRecentMessage._id,
+            role: mostRecentMessage.role,
+            content: mostRecentMessage.body,
+            createdAt: mostRecentMessage._creationTime,
+          }),
+        });
+      },
+    });
+
+    return new Response(streamWithMessage, { status: 200 });
+  } catch (error) {
+    console.error("❌ [SERVER] Error in GET handler:", error);
+    return new Response("Internal server error", { status: 500 });
   }
 }

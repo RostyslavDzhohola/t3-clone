@@ -229,3 +229,79 @@ export const deleteChat = mutation({
     }
   },
 });
+
+/**
+ * Append a stream ID to track resumable streams for a chat
+ */
+export const appendStreamId = mutation({
+  args: {
+    chatId: v.id("chats"),
+    streamId: v.string(),
+    userId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { chatId, streamId, userId }) => {
+    // Mark any existing streams for this chat as inactive
+    const existingStreams = await ctx.db
+      .query("streams")
+      .withIndex("by_chat_and_active", (q) =>
+        q.eq("chatId", chatId).eq("isActive", true)
+      )
+      .collect();
+
+    for (const stream of existingStreams) {
+      await ctx.db.patch(stream._id, { isActive: false });
+    }
+
+    // Insert the new active stream
+    await ctx.db.insert("streams", {
+      chatId,
+      streamId,
+      userId,
+      isActive: true,
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Load the most recent stream IDs for a chat
+ */
+export const loadStreams = query({
+  args: {
+    chatId: v.id("chats"),
+  },
+  returns: v.array(v.string()),
+  handler: async (ctx, { chatId }) => {
+    const streams = await ctx.db
+      .query("streams")
+      .withIndex("by_chat", (q) => q.eq("chatId", chatId))
+      .order("desc")
+      .take(10); // Get last 10 streams
+
+    return streams.map((stream) => stream.streamId);
+  },
+});
+
+/**
+ * Mark a stream as inactive when it completes
+ */
+export const markStreamInactive = mutation({
+  args: {
+    streamId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { streamId }) => {
+    const stream = await ctx.db
+      .query("streams")
+      .withIndex("by_stream", (q) => q.eq("streamId", streamId))
+      .first();
+
+    if (stream) {
+      await ctx.db.patch(stream._id, { isActive: false });
+    }
+
+    return null;
+  },
+});

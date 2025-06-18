@@ -5,6 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useChat, type Message } from "@ai-sdk/react";
 import { useChatLogic } from "@/hooks/use-chat-logic";
 import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
+import { useAutoResume } from "@/hooks/use-auto-resume";
 import { LocalStorageChat } from "@/lib/constants";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
@@ -69,7 +70,7 @@ export default function ChatUI({
     currentAnonymousChat,
   });
 
-  // Set up useChat hook with server-side history management
+  // Set up useChat hook with server-side history management and resumable streams
   const {
     messages,
     setMessages,
@@ -79,8 +80,12 @@ export default function ChatUI({
     append,
     status,
     handleInputChange,
+    experimental_resume,
+    data,
   } = useChat({
     api: "/api/chat",
+    // 🔥 RESUMABLE STREAMS: Provide chat ID to enable stream resumption
+    id: user && chatId ? chatId : undefined,
     experimental_throttle: 100,
     body: {
       model: selectedModel.id,
@@ -118,6 +123,17 @@ export default function ChatUI({
       handleAiMessageFinish(message);
       // No automatic scrolling - stay where you are
     },
+  });
+
+  // 🔥 RESUMABLE STREAMS: Auto-resume streams for authenticated users
+  useAutoResume({
+    autoResume: Boolean(user && chatId),
+    initialMessages: user
+      ? convertedMessages
+      : currentAnonymousChat?.messages || [],
+    experimental_resume,
+    data,
+    setMessages,
   });
 
   // Handle chat switching - set loading state

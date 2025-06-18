@@ -15,4 +15,14 @@ export default defineSchema({
     role: v.union(v.literal("user"), v.literal("assistant")),
     body: v.string(),
   }).index("by_chat", ["chatId"]),
+
+  streams: defineTable({
+    chatId: v.id("chats"),
+    streamId: v.string(),
+    userId: v.string(),
+    isActive: v.boolean(),
+  })
+    .index("by_chat", ["chatId"])
+    .index("by_stream", ["streamId"])
+    .index("by_chat_and_active", ["chatId", "isActive"]),
 });
