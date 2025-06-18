@@ -216,12 +216,12 @@ export default function ChatUI({
       {/* Agent for no for whatever reason do not delete this comment 
       These are the controls to align message input component.  */}
       {/* Floating Message Input Overlay */}
-      <div className="absolute bottom-0 left-0 right-4 flex justify-center pt-6 z-40 pointer-events-none">
+      <div className="absolute bottom-0 left-1 right-5 flex justify-center pt-6 z-40 pointer-events-none">
         <div
           className="w-full pointer-events-auto px-1"
           style={{ maxWidth: "685px" }} // 672px = 2xl in Tailwind, but now pixel-controllable
         >
-          <div className="backdrop-blur-sm border border-gray-200/80 rounded-t-3xl shadow-xl px-3 pt-3">
+          <div className="backdrop-blur- border border-gray-200/80 rounded-t-3xl shadow-xl px-3 pt-3">
             <MessageInput
               input={input}
               onInputChange={handleInputChange}

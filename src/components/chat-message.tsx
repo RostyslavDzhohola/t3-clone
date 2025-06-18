@@ -11,6 +11,8 @@ interface ChatMessageProps {
 }
 
 const ChatMessage = memo(({ message }: ChatMessageProps) => {
+  // 🔍 MESSAGE TYPE DETECTION
+  // This determines whether the message is from the user or the AI assistant
   const isUser = message.role === "user";
 
   return (
@@ -18,15 +20,27 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`flex w-full ${isUser ? "justify-end" : "justify-start"} mb-6`}
+      // 📍 LAYOUT POSITIONING
+      // User messages: aligned to the right (justify-end)
+      // Assistant messages: aligned to the left (justify-start)
+      className={`flex w-full ${isUser ? "justify-end" : "justify-start"} mb-7`}
     >
       <div
         className={`
           group relative transition-all duration-200 ease-out
           ${
             isUser
-              ? "max-w-[85%] rounded-2xl px-5 py-4 bg-gray-100 text-gray-900 shadow-sm border border-gray-200/50"
-              : "w-full rounded-2xl px-5 py-4 text-gray-900"
+              ? // 👤 USER MESSAGE STYLING
+                // - Limited width (max-w-[85%])
+                // - Gray background (bg-gray-100)
+                // - Rounded corners and padding
+                // - Border and shadow for chat bubble effect
+                "max-w-[85%] rounded-2xl px-5 py-4 mr-5 bg-gray-100 text-gray-900 shadow-sm border border-gray-200/50"
+              : // 🤖 ASSISTANT MESSAGE STYLING
+                // - Full width (w-full)
+                // - No background color (transparent)
+                // - Minimal styling for clean appearance
+                "w-full rounded-2xl px-5 py-4 text-gray-900"
           }
         `}
       >
@@ -35,8 +49,12 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
             prose prose-sm max-w-none overflow-hidden
             ${
               isUser
-                ? "prose-gray prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900"
-                : "prose-gray prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900"
+                ? // 👤 USER MESSAGE TEXT STYLING
+                  // Same prose styling for consistent typography
+                  "prose-gray prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900"
+                : // 🤖 ASSISTANT MESSAGE TEXT STYLING
+                  // Same prose styling for consistent typography
+                  "prose-gray prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900"
             }
             prose-p:mb-1 prose-p:leading-relaxed prose-p:last:mb-0
             prose-headings:mb-3 prose-headings:mt-4 prose-headings:first:mt-0
@@ -45,6 +63,9 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
             prose-blockquote:my-3 prose-blockquote:first:mt-0 prose-blockquote:last:mb-0
           `}
         >
+          {/* 📝 MESSAGE CONTENT RENDERING
+              Both user and assistant messages use the same Markdown component
+              for consistent text rendering and formatting */}
           {typeof message.content === "string" ? (
             <Markdown>{message.content}</Markdown>
           ) : (

@@ -26,7 +26,10 @@ ChatContentProps) {
   // Show welcome screen when no messages
   if (messages.length === 0) {
     return (
+      // Outer container: centers the welcome screen horizontally with max width and padding
       <div className="w-full max-w-3xl mx-auto px-4 py-8 pb-32">
+        {/* Inner container: vertically and horizontally centers the welcome
+        content within 60% of viewport height */}
         <div className="flex items-center justify-center h-[60vh]">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -55,8 +58,8 @@ ChatContentProps) {
               {isAnonymous ? "Anonymous Chat" : "Start a conversation"}
             </h3>
             <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
-              Type a message below to begin your conversation. I'm here to help
-              with any questions you have.
+              Type a message below to begin your conversation. I&apos;m here to
+              help with any questions you have.
             </p>
           </motion.div>
         </div>
@@ -67,7 +70,7 @@ ChatContentProps) {
   return (
     <div
       className="w-full mx-auto px-4 py-8 pb-32"
-      style={{ maxWidth: "var(--chat-content-max-width, 685px)" }}
+      style={{ maxWidth: "var(--chat-content-max-width, 710px)" }}
     >
       <div className="space-y-2">
         {/* Render all messages - this enables smooth streaming! */}
@@ -100,9 +103,6 @@ ChatContentProps) {
                     style={{ animationDelay: "0.2s" }}
                   ></div>
                 </div>
-                <span className="text-sm text-gray-500 ml-2">
-                  AI is typing...
-                </span>
               </div>
             </div>
           </motion.div>
