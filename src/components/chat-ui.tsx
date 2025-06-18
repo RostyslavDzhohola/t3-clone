@@ -221,7 +221,7 @@ export default function ChatUI({
           className="w-full pointer-events-auto px-1"
           style={{ maxWidth: "685px" }} // 672px = 2xl in Tailwind, but now pixel-controllable
         >
-          <div className="backdrop-blur- border border-gray-200/80 rounded-t-3xl shadow-xl px-3 pt-3">
+          <div className="backdrop-blur-sm border border-gray-200/80 rounded-t-3xl shadow-xl px-3 pt-3">
             <MessageInput
               input={input}
               onInputChange={handleInputChange}

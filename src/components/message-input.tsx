@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -34,6 +34,8 @@ export default function MessageInput({
   onModelChange,
   availableModels,
 }: MessageInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // If Enter is pressed without Shift, submit the form
     if (e.key === "Enter" && !e.shiftKey) {
@@ -50,6 +52,20 @@ export default function MessageInput({
     onKeyDown?.(e);
   };
 
+  // Auto-resize textarea based on content
+  const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+    const target = e.target as HTMLTextAreaElement;
+    target.style.height = "auto";
+    target.style.height = `${Math.min(target.scrollHeight, 128)}px`;
+  };
+
+  // Reset height when input is cleared
+  useEffect(() => {
+    if (!input && textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  }, [input]);
+
   const modelsToShow = availableModels || getAvailableModels();
 
   return (
@@ -59,9 +75,11 @@ export default function MessageInput({
         <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-lg shadow-sm focus:variant">
           {/* Text Input */}
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={onInputChange}
             onKeyDown={handleKeyDown}
+            onInput={handleInput}
             placeholder={placeholder}
             disabled={disabled}
             rows={1}
@@ -70,11 +88,6 @@ export default function MessageInput({
             style={{
               height: "auto",
               minHeight: "1.5rem",
-            }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = "auto";
-              target.style.height = `${Math.min(target.scrollHeight, 128)}px`;
             }}
           />
 
