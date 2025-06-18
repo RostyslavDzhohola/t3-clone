@@ -75,7 +75,7 @@ ChatContentProps) {
   }, [status]);
 
   // SIMPLE: Just check status for immediate 80vh jump
-
+  // TODO: Fix so it doesn't show welcome message if we're in the chat window that's still loading the chats from the database.
   // Show welcome screen when no messages
   if (messages.length === 0) {
     return (

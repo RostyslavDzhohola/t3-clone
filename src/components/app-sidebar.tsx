@@ -126,29 +126,28 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <div className="px-2 py-2">
-            {/* Search */}
-            <SidebarSearch
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-            />
+      <SidebarContent className="flex flex-col">
+        {/* Fixed top section - New Chat Button and Search */}
+        <div className="flex-shrink-0 px-2">
+          {/* New Chat Button */}
+          <Button
+            onClick={handleNewChat}
+            disabled={(!user && isAnonymousLimitReached) || isCreatingChat}
+            className="w-full mb-3 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {isCreatingChat ? "Creating..." : "New Chat"}
+          </Button>
 
-            {/* New Chat Button */}
-            <Button
-              onClick={handleNewChat}
-              disabled={(!user && isAnonymousLimitReached) || isCreatingChat}
-              className="w-full mb-3 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {isCreatingChat ? "Creating..." : "New Chat"}
-            </Button>
-          </div>
+          {/* Search */}
+          <SidebarSearch
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+          />
+        </div>
 
-          <SidebarSeparator />
-
-          {/* Chat History */}
+        {/* Scrollable chat history section */}
+        <SidebarGroup className="flex-1 overflow-y-auto">
           <SidebarHistory
             currentChatId={currentChatId}
             onChatSelect={onChatSelect}
