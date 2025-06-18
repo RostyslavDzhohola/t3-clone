@@ -12,7 +12,6 @@ import {
   SidebarHeader,
   SidebarFooter,
   SidebarGroup,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { SidebarUserNav } from "./sidebar-user-nav";
 import { SidebarSearch } from "./sidebar-search";

@@ -35,7 +35,7 @@ export default function ChatUI({
   currentAnonymousChat,
 }: ChatUIProps) {
   const { user } = useUser();
-  const [bannerClosed, setBannerClosed] = useState(false);
+  // const [bannerClosed, setBannerClosed] = useState(false);
   const [isContentReady, setIsContentReady] = useState(false);
   const [currentLoadingChatId, setCurrentLoadingChatId] = useState<
     string | null
