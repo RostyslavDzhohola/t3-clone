@@ -28,7 +28,7 @@ export function CopyButton({ text, className = "" }: CopyButtonProps) {
     <button
       onClick={handleCopy}
       disabled={isCopied}
-      className={`inline-flex items-center justify-center p-2 transition-colors rounded hover:bg-gray-600 focus:outline-none  focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 ${className}`}
+      className={`inline-flex items-center justify-center w-8 h-8 rounded-md bg-transparent hover:bg-gray-200 transition-colors duration-200 group focus:outline-none focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 ${className}`}
       aria-label={isCopied ? "Copied!" : "Copy code"}
     >
       {isCopied ? (
@@ -47,7 +47,7 @@ export function CopyButton({ text, className = "" }: CopyButtonProps) {
         </svg>
       ) : (
         <svg
-          className="w-4 h-4 text-gray-500 hover:text-white"
+          className="w-4 h-4 text-gray-500 group-hover:text-gray-700"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

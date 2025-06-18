@@ -66,7 +66,7 @@ export const AVAILABLE_MODELS: LLMModel[] = [
     id: "qwen/qwen3-235b-a22b",
     name: "Qwen 3 235B",
     provider: "Alibaba",
-    available: true,
+    available: false,
   },
   {
     id: "anthropic/claude-3.5-sonnet",

@@ -12,3 +12,4 @@ export { SidebarHistory } from "./sidebar-history";
 export { SidebarHistoryItem } from "./sidebar-history-item";
 export { SidebarSearch } from "./sidebar-search";
 export { SidebarUserNav } from "./sidebar-user-nav";
+export { TextWrapButton } from "./text-wrap-button";
