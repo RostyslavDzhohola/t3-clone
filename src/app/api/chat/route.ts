@@ -5,6 +5,7 @@ import {
   appendClientMessage,
   appendResponseMessages,
   smoothStream,
+  createDataStream,
   type CoreMessage,
 } from "ai";
 import { type Message } from "@ai-sdk/react";
@@ -19,6 +20,10 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
 import { auth } from "@clerk/nextjs/server";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import {
+  createResumableStreamContext,
+  type ResumableStreamContext,
+} from "resumable-stream";
 
 // Initialize Convex client for server-side usage
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
