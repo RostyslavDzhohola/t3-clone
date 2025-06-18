@@ -82,28 +82,26 @@ ChatContentProps) {
           />
         ))}
 
-        {/* Show typing indicator when streaming */}
-        {status === "streaming" && (
+        {/* Show typing indicator when submitted but not yet streaming */}
+        {status === "submitted" && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="flex justify-start mb-6"
           >
-            <div className="bg-gray-100 border border-gray-200/50 rounded-2xl px-5 py-4 shadow-sm">
-              <div className="flex space-x-2 items-center">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div
-                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "0.1s" }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "0.2s" }}
-                  ></div>
-                </div>
-              </div>
+            <div className="flex items-center space-x-1 px-2 py-3">
+              {/* Three dots with no background - pure indicator */}
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div
+                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: "0.15s" }}
+              ></div>
+              <div
+                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: "0.3s" }}
+              ></div>
             </div>
           </motion.div>
         )}
