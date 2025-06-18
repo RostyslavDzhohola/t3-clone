@@ -124,13 +124,13 @@ ChatContentProps) {
   }
 
   return (
-    // Immediate 80vh on submit, then only use pb-32 if CURRENT message delta > 800
+    // TODO: Fix it later to be more dynamic
     <div
       ref={contentRef}
       className={`w-full mx-auto px-4 py-8 ${
         status === "submitted" || status === "streaming"
           ? "pb-[600px]" // Immediately jump to 80vh when message is submitted
-          : status === "ready" && currentDelta > 800
+          : status === "ready" && currentDelta > 700
           ? "pb-32" // Only reset to normal padding if THIS message was long
           : "pb-[80vh]" // Default to extended padding for all other cases
       }`}
