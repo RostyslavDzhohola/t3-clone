@@ -8,7 +8,7 @@ import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 import { LocalStorageChat } from "@/lib/constants";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
-import RemainingLimitBanner from "./remaining-limit-banner";
+// import RemainingLimitBanner from "./remaining-limit-banner";
 
 interface ChatUIProps {
   chatId?: string;
@@ -28,7 +28,7 @@ export default function ChatUI({
   chatId,
   anonymousMessageCount = 0,
   anonymousAiMessageCount = 0,
-  isAnonymousLimitReached = false,
+  // isAnonymousLimitReached = false,
   ANONYMOUS_MESSAGE_LIMIT = 10,
   onAnonymousAiMessageUpdate,
   addMessageToAnonymousChat,
@@ -338,7 +338,7 @@ export default function ChatUI({
       </div>
 
       {/* Anonymous Limit Banner */}
-      {!user && !bannerClosed && (
+      {/* {!user && !bannerClosed && (
         <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 z-50">
           {(() => {
             const remaining = Math.max(
@@ -354,7 +354,7 @@ export default function ChatUI({
             );
           })()}
         </div>
-      )}
+      )} */}
     </div>
   );
 }

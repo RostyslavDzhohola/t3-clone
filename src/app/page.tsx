@@ -2,10 +2,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
 import { ChatLayout, ChatUI } from "@/components";
+import WelcomeScreen from "@/components/welcome-screen";
 import MobileWarning from "@/components/mobile-warning";
 
 export default function Home() {
+  const { user, isLoaded } = useUser();
   const [isMobile, setIsMobile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -36,15 +39,23 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Show loading while detecting mobile
-  if (isLoading) {
+  // Show loading while detecting mobile and auth status
+  if (isLoading || !isLoaded) {
     return null;
   }
 
-  // Show mobile warning on mobile devices, otherwise show ChatLayout with ChatUI
-  return isMobile ? (
-    <MobileWarning />
-  ) : (
+  // Show mobile warning on mobile devices
+  if (isMobile) {
+    return <MobileWarning />;
+  }
+
+  // Show welcome screen for unsigned users
+  if (!user) {
+    return <WelcomeScreen />;
+  }
+
+  // Show chat interface for signed-in users
+  return (
     <ChatLayout>
       <ChatUI />
     </ChatLayout>
