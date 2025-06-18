@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useChat, type Message } from "@ai-sdk/react";
 import { useChatLogic } from "@/hooks/use-chat-logic";
@@ -36,6 +36,10 @@ export default function ChatUI({
 }: ChatUIProps) {
   const { user } = useUser();
   const [bannerClosed, setBannerClosed] = useState(false);
+  const [isContentReady, setIsContentReady] = useState(false);
+  const [currentLoadingChatId, setCurrentLoadingChatId] = useState<
+    string | null
+  >(null);
 
   // Initialize scroll-to-bottom functionality
   const {
@@ -116,29 +120,97 @@ export default function ChatUI({
     },
   });
 
-  // Auto-scroll to bottom when opening a new chat
+  // Handle chat switching - set loading state
   useEffect(() => {
-    if (chatId || currentAnonymousChat) {
-      // Use setTimeout to ensure DOM is ready
-      setTimeout(() => {
-        scrollToBottomInstant();
-      }, 100);
+    const newChatId = user ? chatId : currentAnonymousChat?.id;
+    if (newChatId && newChatId !== currentLoadingChatId) {
+      setIsContentReady(false);
+      setCurrentLoadingChatId(newChatId);
     }
-  }, [chatId, currentAnonymousChat, scrollToBottomInstant]);
+    // Handle case when no chat is selected (show content immediately)
+    if (!newChatId && currentLoadingChatId) {
+      setIsContentReady(true);
+      setCurrentLoadingChatId(null);
+    }
+  }, [chatId, currentAnonymousChat, user, currentLoadingChatId]);
+
+  // Helper function to wait for content to be rendered and scrolled
+  const waitForContentAndReveal = useCallback(
+    (messageCount = 0) => {
+      // Dynamic delay based on message count (more messages = longer delay)
+      const baseDelay = 150;
+      const perMessageDelay =
+        messageCount > 50 ? 20 : messageCount > 20 ? 15 : 5; // Graduated delay for large chats
+      const maxDelay = messageCount > 50 ? 1000 : 750; // Higher max delay for very large chats
+      const initialDelay = Math.min(
+        baseDelay + messageCount * perMessageDelay,
+        maxDelay
+      );
+
+      // First, wait for DOM to render the messages
+      setTimeout(() => {
+        // Then scroll to bottom
+        scrollToBottomInstant();
+
+        // Wait for scroll to complete and check if content is actually rendered
+        const checkContentReady = (attempts = 0) => {
+          const container = containerRef.current;
+          const endElement = endRef.current;
+
+          if (container && endElement && attempts < 20) {
+            // Max 20 attempts (1 second)
+            // Check if we have meaningful content height and scroll is positioned
+            const hasContent = container.scrollHeight > 100;
+            const isScrolledToBottom =
+              Math.abs(
+                container.scrollTop +
+                  container.clientHeight -
+                  container.scrollHeight
+              ) < 50; // Within 50px of bottom
+
+            if (hasContent && isScrolledToBottom) {
+              // Content is ready and properly positioned, reveal it
+              setIsContentReady(true);
+            } else {
+              // Still waiting for content or scroll positioning, check again
+              setTimeout(() => checkContentReady(attempts + 1), 50);
+            }
+          } else if (attempts >= 20) {
+            // Fallback: reveal content even if checks failed
+            console.warn(
+              "Content readiness checks timed out, revealing content"
+            );
+            setIsContentReady(true);
+          } else {
+            // Elements not ready, try again
+            setTimeout(() => checkContentReady(attempts + 1), 50);
+          }
+        };
+
+        // Start checking for content readiness after scroll completes
+        setTimeout(() => checkContentReady(), 150);
+      }, initialDelay);
+    },
+    [scrollToBottomInstant, containerRef, endRef]
+  );
 
   // Update messages when Convex data changes
   useEffect(() => {
     if (user && convertedMessages.length >= 0) {
       setMessages(convertedMessages);
+      // Wait for content to be properly loaded and positioned
+      waitForContentAndReveal(convertedMessages.length);
     }
-  }, [user, convertedMessages, setMessages]);
+  }, [user, convertedMessages, setMessages, waitForContentAndReveal]);
 
   // Update messages when anonymous chat changes
   useEffect(() => {
     if (!user && currentAnonymousChat) {
       setMessages(currentAnonymousChat.messages);
+      // Wait for content to be properly loaded and positioned
+      waitForContentAndReveal(currentAnonymousChat.messages.length);
     }
-  }, [user, currentAnonymousChat, setMessages]);
+  }, [user, currentAnonymousChat, setMessages, waitForContentAndReveal]);
 
   // Set up Intersection Observer for scroll anchor
   useEffect(() => {
@@ -185,8 +257,16 @@ export default function ChatUI({
 
   return (
     <div className="relative flex flex-col h-full bg-gray-50">
+      {/* Loading Overlay - Just hide content behind empty background */}
+      {!isContentReady && <div className="absolute inset-0 bg-gray-50 z-30" />}
+
       {/* Main Content Area - Now properly scrollable */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto">
+      <div
+        ref={containerRef}
+        className={`flex-1 overflow-y-auto transition-opacity duration-300 ${
+          isContentReady ? "opacity-100" : "opacity-0"
+        }`}
+      >
         <ChatContent
           messages={messages}
           status={status}
@@ -208,7 +288,7 @@ export default function ChatUI({
       </div>
       {/* Agent for no for whatever reason do not delete this comment 
       These are the controls to align message input component.  */}
-      {/* Floating Message Input Overlay */}
+      {/* Floating Message Input Overlay - Always visible, independent of content loading */}
       <div className="absolute bottom-0 left-1 right-5 flex justify-center pt-6 z-40 pointer-events-none">
         <div
           className="w-full pointer-events-auto px-1"
@@ -229,8 +309,8 @@ export default function ChatUI({
               onModelChange={handleModelChange}
             />
 
-            {/* Scroll to bottom button - show when not at bottom */}
-            {!isAtBottom && (
+            {/* Scroll to bottom button - show when not at bottom and content is ready */}
+            {!isAtBottom && isContentReady && (
               <div className="absolute bottom-full right-6 mb-4">
                 <button
                   onClick={() => scrollToBottom()}
