@@ -26,37 +26,41 @@ export function CodeBlock({
     const codeContent = String(children).replace(/\n$/, "");
 
     return (
-      <div className="relative my-4 overflow-hidden rounded-lg border border-gray-200">
+      <div className="my-6 overflow-hidden rounded-lg border border-gray-200 shadow-sm">
         {/* Header with language and copy button */}
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-200 border-b border-gray-300">
-          <span className="text-xs font-medium text-gray-600 lowercase tracking-wide">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+          <span className="text-sm font-medium text-gray-600 capitalize">
             {language}
           </span>
           <CopyButton text={codeContent} />
         </div>
 
         {/* Code content with syntax highlighting */}
-        <SyntaxHighlighter
-          language={language}
-          style={oneLight}
-          customStyle={{
-            margin: 0,
-            borderRadius: 0,
-            fontSize: "0.875rem",
-            lineHeight: "1.5",
-          }}
-          showLineNumbers={false}
-          wrapLines={true}
-          {...props}
-        >
-          {codeContent}
-        </SyntaxHighlighter>
+        <div className="relative">
+          <SyntaxHighlighter
+            language={language}
+            style={oneLight}
+            customStyle={{
+              margin: 0,
+              borderRadius: 0,
+              fontSize: "0.875rem",
+              lineHeight: "1.6",
+              padding: "1rem",
+              background: "#fafafa",
+            }}
+            showLineNumbers={false}
+            wrapLines={true}
+            {...props}
+          >
+            {codeContent}
+          </SyntaxHighlighter>
+        </div>
       </div>
     );
   } else {
     return (
       <code
-        className="text-sm bg-gray-100 text-gray-800 py-1 px-2 rounded-md font-mono border border-gray-200"
+        className="bg-gray-100 px-1.5 py-0.5 rounded-md text-sm font-mono text-gray-800 border border-gray-200"
         {...props}
       >
         {children}

@@ -1,7 +1,11 @@
 "use client";
 
 import { Id } from "../../convex/_generated/dataModel";
-import { SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import {
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+} from "@/components/ui/sidebar";
 import DeleteChatDialog from "./delete-chat-dialog";
 
 interface Chat {
@@ -32,12 +36,14 @@ export function SidebarHistoryItem({
         className="flex items-center justify-between w-full"
       >
         <span className="truncate flex-1 text-left">{chat.title}</span>
+      </SidebarMenuButton>
+      <SidebarMenuAction showOnHover>
         <DeleteChatDialog
           chatTitle={chat.title}
           onDelete={() => onDelete(chat._id)}
           isDeleting={isDeleting}
         />
-      </SidebarMenuButton>
+      </SidebarMenuAction>
     </SidebarMenuItem>
   );
 }

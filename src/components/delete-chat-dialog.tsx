@@ -12,7 +12,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 
 interface DeleteChatDialogProps {
@@ -28,17 +27,13 @@ export default function DeleteChatDialog({
 }: DeleteChatDialogProps) {
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 text-gray-500 hover:text-red-600 transition-all duration-200"
-          onClick={(e) => {
-            e.stopPropagation(); // Prevent triggering chat selection
-          }}
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
+      <AlertDialogTrigger
+        asChild
+        onClick={(e: React.MouseEvent) => {
+          e.stopPropagation(); // Prevent triggering chat selection
+        }}
+      >
+        <Trash2 className="h-4 w-4" />
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

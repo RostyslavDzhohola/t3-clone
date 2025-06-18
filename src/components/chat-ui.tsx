@@ -128,7 +128,7 @@ export default function ChatUI({
         scrollToBottomInstant();
       }, 100);
     }
-  }, [chatId, currentAnonymousChat?.id, scrollToBottomInstant]);
+  }, [chatId, currentAnonymousChat, scrollToBottomInstant]);
 
   // Update messages when Convex data changes
   useEffect(() => {
@@ -169,7 +169,7 @@ export default function ChatUI({
     observer.observe(element);
 
     return () => observer.disconnect();
-  }, [onViewportEnter, onViewportLeave]);
+  }, [onViewportEnter, onViewportLeave, containerRef, endRef]);
 
   // Create the enhanced submit handler
   const enhancedSubmit = createEnhancedSubmit(
@@ -216,9 +216,12 @@ export default function ChatUI({
       {/* Agent for no for whatever reason do not delete this comment 
       These are the controls to align message input component.  */}
       {/* Floating Message Input Overlay */}
-      <div className="absolute bottom-0 left-0 right-4 flex justify-center pt-4 z-40 pointer-events-none">
-        <div className="w-full max-w-3xl pointer-events-auto px-0.5">
-          <div className="backdrop-blur-xs border border-gray-200 rounded-t-2xl shadow-lg px-2 pt-2">
+      <div className="absolute bottom-0 left-0 right-4 flex justify-center pt-6 z-40 pointer-events-none">
+        <div
+          className="w-full pointer-events-auto px-1"
+          style={{ maxWidth: "685px" }} // 672px = 2xl in Tailwind, but now pixel-controllable
+        >
+          <div className="backdrop-blur-sm border border-gray-200/80 rounded-t-3xl shadow-xl px-3 pt-3">
             <MessageInput
               input={input}
               onInputChange={handleInputChange}
@@ -235,10 +238,10 @@ export default function ChatUI({
 
             {/* Scroll to bottom button - show when not at bottom */}
             {!isAtBottom && (
-              <div className="absolute bottom-full right-4 mb-3">
+              <div className="absolute bottom-full right-6 mb-4">
                 <button
                   onClick={() => scrollToBottom()}
-                  className="group bg-white/90 backdrop-blur-sm border border-gray-200/80 rounded-full p-2.5 shadow-md hover:shadow-lg hover:bg-white transition-all duration-200 ease-in-out"
+                  className="group bg-white/95 backdrop-blur-sm border border-gray-200/80 rounded-full p-3 shadow-lg hover:shadow-xl hover:bg-white transition-all duration-200 ease-out hover:scale-105"
                   title="Scroll to bottom"
                 >
                   <svg
