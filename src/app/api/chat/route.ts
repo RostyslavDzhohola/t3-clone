@@ -3,6 +3,7 @@ import {
   streamText,
   convertToCoreMessages,
   appendClientMessage,
+  appendResponseMessages,
   type CoreMessage,
 } from "ai";
 import { type Message } from "@ai-sdk/react";
