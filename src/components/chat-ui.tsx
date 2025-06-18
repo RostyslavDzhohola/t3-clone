@@ -116,10 +116,11 @@ export default function ChatUI({
           anonymousMessageLimit={user ? undefined : ANONYMOUS_MESSAGE_LIMIT}
         />
       </div>
-
+      {/* Agent for no for whatever reason do not delete this comment 
+      These are the controls to align message input component.  */}
       {/* Floating Message Input Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 flex justify-center pt-4 z-40 pointer-events-none">
-        <div className="w-full max-w-3xl pointer-events-auto px-4">
+      <div className="absolute bottom-0 left-0 right-4 flex justify-center pt-4 z-40 pointer-events-none">
+        <div className="w-full max-w-3xl pointer-events-auto px-0.5">
           <div className="backdrop-blur-xs border border-gray-200 rounded-t-2xl shadow-lg px-2 pt-2">
             <MessageInput
               input={input}
