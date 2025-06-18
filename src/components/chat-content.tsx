@@ -1,7 +1,7 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion } from "framer-motion";
 import ChatMessage from "@/components/chat-message";
@@ -23,11 +23,67 @@ export default function ChatContent({
 }: // anonymousMessageCount,
 // anonymousMessageLimit,
 ChatContentProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previousScrollHeightRef = useRef<number>(0);
+  const [currentDelta, setCurrentDelta] = useState<number>(0);
+
+  // Calculate and log scroll dimensions after status changes and message updates
+  useEffect(() => {
+    // Only calculate when status is "ready"
+    if (status !== "ready") return;
+
+    const calculateScrollDimensions = () => {
+      if (!contentRef.current) return;
+
+      const element = contentRef.current;
+
+      // Get the scrollable container (should be the parent with overflow-y-auto)
+      const scrollContainer =
+        element.closest('[style*="overflow-y: auto"], .overflow-y-auto') ||
+        element.parentElement?.closest(
+          '[style*="overflow-y: auto"], .overflow-y-auto'
+        ) ||
+        document.documentElement;
+
+      if (scrollContainer) {
+        const scrollHeight = scrollContainer.scrollHeight; // Total content height
+        const previousScrollHeight = previousScrollHeightRef.current;
+        const delta = scrollHeight - previousScrollHeight;
+
+        console.log("📏 Total Content Height:", {
+          totalContentHeight: scrollHeight,
+          delta: delta,
+        });
+
+        // Update the previous height and current delta for this message
+        previousScrollHeightRef.current = scrollHeight;
+        setCurrentDelta(delta);
+      }
+    };
+
+    // Calculate after a short delay to account for animations/rendering
+    const timeoutId = setTimeout(calculateScrollDimensions, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [status, messages.length]); // Only recalculate when status changes or message count changes
+
+  // Reset delta when starting a new message
+  useEffect(() => {
+    if (status === "submitted") {
+      setCurrentDelta(0);
+    }
+  }, [status]);
+
+  // SIMPLE: Just check status for immediate 80vh jump
+
   // Show welcome screen when no messages
   if (messages.length === 0) {
     return (
       // Outer container: centers the welcome screen horizontally with max width and padding
-      <div className="w-full max-w-3xl mx-auto px-4 py-8 pb-32">
+      <div
+        ref={contentRef}
+        className="w-full max-w-3xl mx-auto px-4 py-8 pb-32"
+      >
         {/* Inner container: vertically and horizontally centers the welcome
         content within 60% of viewport height */}
         <div className="flex items-center justify-center h-[60vh]">
@@ -68,8 +124,16 @@ ChatContentProps) {
   }
 
   return (
+    // Immediate 80vh on submit, then only use pb-32 if CURRENT message delta > 800
     <div
-      className="w-full mx-auto px-4 py-8 pb-32"
+      ref={contentRef}
+      className={`w-full mx-auto px-4 py-8 ${
+        status === "submitted" || status === "streaming"
+          ? "pb-[80vh]" // Immediately jump to 80vh when message is submitted
+          : status === "ready" && currentDelta > 800
+          ? "pb-32" // Only reset to normal padding if THIS message was long
+          : "pb-[80vh]" // Default to extended padding for all other cases
+      }`}
       style={{ maxWidth: "var(--chat-content-max-width, 710px)" }}
     >
       <div className="space-y-2">

@@ -113,10 +113,7 @@ export default function ChatUI({
     },
     onFinish: (message) => {
       handleAiMessageFinish(message);
-      // Auto-scroll to bottom when AI response is complete (if user was at bottom)
-      if (isAtBottom) {
-        scrollToBottom();
-      }
+      // No automatic scrolling - stay where you are
     },
   });
 
