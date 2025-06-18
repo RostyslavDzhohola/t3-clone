@@ -76,7 +76,19 @@ ChatContentProps) {
         {/* Render all messages - this enables smooth streaming! */}
         {messages.map((message, index) => (
           <ChatMessage
-            key={message.id}
+            /*
+             * Using the array index as the key keeps React from
+             * unmounting and remounting the component when the
+             * `id` changes (e.g. when a temporary client-side id
+             * is replaced by the server-generated Convex id).
+             * This prevents the flicker/blink observed when
+             * streaming starts or finishes.
+             *
+             * Because messages are only appended (and never
+             * reordered or removed) this is safe and keeps keys
+             * stable for the lifetime of the session.
+             */
+            key={index}
             message={message}
             isLastMessage={index === messages.length - 1}
           />
