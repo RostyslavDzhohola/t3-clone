@@ -37,7 +37,7 @@ const components: Partial<Components> = {
     }
     // Regular paragraph with improved spacing
     return (
-      <p className="mb-3 last:mb-0 leading-relaxed" {...props}>
+      <p className="mb-3 last:mb-0 leading-loose" {...props}>
         {children}
       </p>
     );

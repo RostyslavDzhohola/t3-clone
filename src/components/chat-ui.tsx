@@ -226,7 +226,7 @@ export default function ChatUI({
               input={input}
               onInputChange={handleInputChange}
               onSubmit={handleSubmitWithScroll}
-              disabled={status !== "ready"}
+              disabled={status === "submitted"}
               placeholder={
                 !user
                   ? "Type your message here... (Anonymous mode)"
