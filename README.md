@@ -21,11 +21,20 @@ Set up and start development environment for Convex database.
 npx convex deploy
 ```
 
+Before running the development server or deploying, make sure to set the `NEXT_PUBLIC_CONVEX_URL` environment variable. You can find this URL in your Convex Dashboard. Add it to your `.env` file to ensure proper connection to your Convex database.
+
 ```bash
 npx convex dev
 ```
 
-Register for Clerk and get API keys for authentication
+Register for Clerk and get API keys for authentication. Add the following environment variables to your `.env` file using the values from your Clerk Dashboard:
+
+```bash
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
+CLERK_SECRET_KEY=your_clerk_secret_key_here
+```
+
+**Note:** These environment variables are required for authentication to work properly. You can find these keys in your Clerk Dashboard under API Keys.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
