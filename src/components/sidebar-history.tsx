@@ -35,38 +35,25 @@ interface SidebarHistoryProps {
 
 // Helper function to get time period for a timestamp
 function getTimePeriod(timestamp: number): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-
-  const oneDay = 24 * 60 * 60 * 1000;
-  const sevenDays = 7 * oneDay;
-  const thirtyDays = 30 * oneDay;
-
-  const today = new Date();
+  const now = new Date();
   const chatDate = new Date(timestamp);
 
-  // Check if it's today
-  if (chatDate.toDateString() === today.toDateString()) {
-    return "Today";
-  }
+  // Reset time to start of day for accurate day comparisons
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const chatStart = new Date(
+    chatDate.getFullYear(),
+    chatDate.getMonth(),
+    chatDate.getDate()
+  );
 
-  // Check if it's yesterday
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (chatDate.toDateString() === yesterday.toDateString()) {
-    return "Yesterday";
-  }
+  const diffDays = Math.floor(
+    (todayStart.getTime() - chatStart.getTime()) / (24 * 60 * 60 * 1000)
+  );
 
-  // Check if it's within last 7 days
-  if (diff < sevenDays) {
-    return "Last 7 Days";
-  }
-
-  // Check if it's within last 30 days
-  if (diff < thirtyDays) {
-    return "Last 30 Days";
-  }
-
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return "Last 7 Days";
+  if (diffDays < 30) return "Last 30 Days";
   return "Other";
 }
 
