@@ -7,7 +7,9 @@ export default defineSchema({
     userId: v.string(),
     title: v.string(),
     lastMessageTime: v.number(),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_last_message", ["userId", "lastMessageTime"]),
 
   messages: defineTable({
     chatId: v.id("chats"),

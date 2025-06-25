@@ -15,6 +15,12 @@ import { ANONYMOUS_STORAGE_KEYS, LocalStorageChat } from "@/lib/constants";
 interface Chat {
   _id: Id<"chats"> | string;
   title: string;
+  lastActivity: number; // Timestamp for grouping
+}
+
+interface ChatGroup {
+  label: string;
+  chats: Chat[];
 }
 
 interface SidebarHistoryProps {
@@ -25,6 +31,74 @@ interface SidebarHistoryProps {
   setAnonymousChats: (chats: LocalStorageChat[]) => void;
   deletingChatId: string | null;
   setDeletingChatId: (id: string | null) => void;
+}
+
+// Helper function to get time period for a timestamp
+function getTimePeriod(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp;
+
+  const oneDay = 24 * 60 * 60 * 1000;
+  const sevenDays = 7 * oneDay;
+  const thirtyDays = 30 * oneDay;
+
+  const today = new Date();
+  const chatDate = new Date(timestamp);
+
+  // Check if it's today
+  if (chatDate.toDateString() === today.toDateString()) {
+    return "Today";
+  }
+
+  // Check if it's yesterday
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (chatDate.toDateString() === yesterday.toDateString()) {
+    return "Yesterday";
+  }
+
+  // Check if it's within last 7 days
+  if (diff < sevenDays) {
+    return "Last 7 Days";
+  }
+
+  // Check if it's within last 30 days
+  if (diff < thirtyDays) {
+    return "Last 30 Days";
+  }
+
+  return "Other";
+}
+
+// Helper function to group chats by time periods
+function groupChatsByTime(chats: Chat[]): ChatGroup[] {
+  const groups: Record<string, Chat[]> = {
+    Today: [],
+    Yesterday: [],
+    "Last 7 Days": [],
+    "Last 30 Days": [],
+    Other: [],
+  };
+
+  chats.forEach((chat) => {
+    const period = getTimePeriod(chat.lastActivity);
+    groups[period].push(chat);
+  });
+
+  // Return only non-empty groups in the correct order
+  const orderedGroups = [
+    "Today",
+    "Yesterday",
+    "Last 7 Days",
+    "Last 30 Days",
+    "Other",
+  ];
+  return orderedGroups
+    .filter((label) => groups[label].length > 0)
+    .map((label) => ({
+      label,
+      chats: groups[label],
+    }));
 }
 
 export function SidebarHistory({
@@ -46,17 +120,30 @@ export function SidebarHistory({
   );
   const deleteChat = useMutation(api.messages.deleteChat);
 
-  // Filter chats based on search term
-  const filteredChats = useMemo(() => {
-    // Prepare unified chat list inside useMemo to avoid dependency issues
+  // Filter and group chats based on search term
+  const chatGroups = useMemo(() => {
+    // Prepare unified chat list with lastActivity timestamp
     const allChats: Chat[] = user
-      ? chats?.map((chat) => ({ _id: chat._id, title: chat.title })) || []
-      : anonymousChats.map((chat) => ({ _id: chat.id, title: chat.title }));
+      ? chats?.map((chat) => ({
+          _id: chat._id,
+          title: chat.title,
+          lastActivity: chat.lastMessageTime || chat._creationTime,
+        })) || []
+      : anonymousChats.map((chat) => ({
+          _id: chat.id,
+          title: chat.title,
+          lastActivity: chat.createdAt,
+        }));
 
-    if (!searchTerm.trim()) return allChats;
-    return allChats.filter((chat) =>
-      chat.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter chats based on search term
+    const filteredChats = !searchTerm.trim()
+      ? allChats
+      : allChats.filter((chat) =>
+          chat.title.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+    // Group chats by time periods
+    return groupChatsByTime(filteredChats);
   }, [user, chats, anonymousChats, searchTerm]);
 
   // Handle chat selection
@@ -110,18 +197,37 @@ export function SidebarHistory({
 
   return (
     <SidebarGroupContent>
-      <SidebarMenu>
-        {filteredChats.map((chat) => (
-          <SidebarHistoryItem
-            key={chat._id}
-            chat={chat}
-            isActive={currentChatId === chat._id}
-            onChatSelect={handleChatSelect}
-            onDelete={handleDeleteChat}
-            isDeleting={deletingChatId === chat._id}
-          />
-        ))}
-      </SidebarMenu>
+      {chatGroups.map((group, groupIndex) => (
+        <div key={group.label} className={groupIndex > 0 ? "mt-6" : ""}>
+          {/* Group Header */}
+          <div className="px-1 py-1 mb-2">
+            <h3 className="text-xs font-bold text-sidebar-muted-foreground tracking-wider">
+              {group.label}
+            </h3>
+          </div>
+
+          {/* Group Chats */}
+          <SidebarMenu>
+            {group.chats.map((chat) => (
+              <SidebarHistoryItem
+                key={chat._id}
+                chat={chat}
+                isActive={currentChatId === chat._id}
+                onChatSelect={handleChatSelect}
+                onDelete={handleDeleteChat}
+                isDeleting={deletingChatId === chat._id}
+              />
+            ))}
+          </SidebarMenu>
+        </div>
+      ))}
+
+      {/* Show message when no chats found */}
+      {chatGroups.length === 0 && (
+        <div className="px-2 py-4 text-center text-sidebar-muted-foreground text-sm">
+          {searchTerm.trim() ? "No chats found" : "No conversations yet"}
+        </div>
+      )}
     </SidebarGroupContent>
   );
 }
