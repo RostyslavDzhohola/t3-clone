@@ -90,7 +90,11 @@ const todoTools = {
         // Parse due date if provided
         let dueDateTimestamp: number | undefined;
         if (dueDate) {
-          dueDateTimestamp = new Date(dueDate).getTime();
+          const parsedDate = new Date(dueDate);
+          if (isNaN(parsedDate.getTime())) {
+            throw new Error("Invalid date format provided");
+          }
+          dueDateTimestamp = parsedDate.getTime();
         }
 
         const todoId = await convex.mutation(api.todos.createTodo, {

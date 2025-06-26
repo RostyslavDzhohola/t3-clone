@@ -69,28 +69,35 @@ export const getTodos = query({
     console.log("📋 [CONVEX] getTodos called for userId:", args.userId);
 
     try {
-      let query = ctx.db
-        .query("todos")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId));
-
-      // Filter by completion status if specified
-      if (args.completed !== undefined) {
+      // Choose the most specific index based on filters
+      let query;
+      if (args.completed !== undefined && args.project !== undefined) {
+        // You'll need a compound index for this case or filter in memory
+        query = ctx.db
+          .query("todos")
+          .withIndex("by_user", (q) => q.eq("userId", args.userId))
+          .filter((q) =>
+            q.and(
+              q.eq(q.field("completed"), args.completed),
+              q.eq(q.field("project"), args.project)
+            )
+          );
+      } else if (args.completed !== undefined) {
         query = ctx.db
           .query("todos")
           .withIndex("by_user_completed", (q) =>
-            q
-              .eq("userId", args.userId)
-              .eq("completed", args.completed as boolean)
+            q.eq("userId", args.userId).eq("completed", args.completed!)
           );
-      }
-
-      // Filter by project if specified
-      if (args.project !== undefined) {
+      } else if (args.project !== undefined) {
         query = ctx.db
           .query("todos")
           .withIndex("by_user_project", (q) =>
             q.eq("userId", args.userId).eq("project", args.project)
           );
+      } else {
+        query = ctx.db
+          .query("todos")
+          .withIndex("by_user", (q) => q.eq("userId", args.userId));
       }
 
       const todos = await query.order("desc").collect();
@@ -172,7 +179,13 @@ export const updateTodo = mutation({
       }
 
       // Build update object with only provided fields
-      const updateData: any = {};
+      const updateData: Partial<{
+        description: string;
+        project: string | undefined;
+        tags: string[] | undefined;
+        priority: "low" | "medium" | "high" | undefined;
+        dueDate: number | undefined;
+      }> = {};
       if (args.description !== undefined)
         updateData.description = args.description;
       if (args.project !== undefined) updateData.project = args.project;
