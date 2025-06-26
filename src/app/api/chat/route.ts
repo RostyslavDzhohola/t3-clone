@@ -7,6 +7,7 @@ import {
   smoothStream,
   createDataStream,
   generateId,
+  tool,
   type CoreMessage,
 } from "ai";
 import { type Message } from "@ai-sdk/react";
@@ -23,6 +24,7 @@ import { auth } from "@clerk/nextjs/server";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { createResumableStreamContext } from "resumable-stream";
 import { after } from "next/server";
+import { z } from "zod";
 
 // Initialize Convex client for server-side usage
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -37,6 +39,308 @@ const ANONYMOUS_MESSAGE_LIMIT = 10;
 const streamContext = createResumableStreamContext({
   waitUntil: after,
 });
+
+// 🛠️ Define To-Do Management Tools
+const todoTools = {
+  createTodo: tool({
+    description:
+      "Create a new to-do item for the user. Extract the task description directly from what the user wants to add to their todo list.",
+    parameters: z.object({
+      description: z
+        .string()
+        .describe(
+          "The task description - what the user wants to do or be reminded of"
+        ),
+      project: z
+        .string()
+        .optional()
+        .describe("Optional project name to categorize the to-do"),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe("Optional tags for categorization"),
+      priority: z
+        .enum(["low", "medium", "high"])
+        .optional()
+        .describe("Priority level of the to-do"),
+      dueDate: z
+        .string()
+        .optional()
+        .describe("Optional due date in ISO format (e.g., '2024-01-15')"),
+    }),
+    execute: async ({ description, project, tags, priority, dueDate }) => {
+      try {
+        // Extract user ID from the most recent user message context
+        // This is a simplified approach - in production, you'd want more robust user identification
+        // TODO: Add more robust user identification
+        console.log("🛠️ [TOOL] createTodo called:", {
+          description,
+          project,
+          tags,
+          priority,
+          dueDate,
+        });
+
+        // Since we're in a server action context, we need to get the authenticated user
+        const { userId } = await auth();
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
+
+        // Parse due date if provided
+        let dueDateTimestamp: number | undefined;
+        if (dueDate) {
+          dueDateTimestamp = new Date(dueDate).getTime();
+        }
+
+        const todoId = await convex.mutation(api.todos.createTodo, {
+          userId,
+          description,
+          project,
+          tags,
+          priority,
+          dueDate: dueDateTimestamp,
+        });
+
+        console.log("✅ [TOOL] Todo created successfully:", todoId);
+        return {
+          success: true,
+          todoId,
+          message: `Successfully created to-do: "${description}"${
+            project ? ` in project "${project}"` : ""
+          }${priority ? ` with ${priority} priority` : ""}`,
+        };
+      } catch (error) {
+        console.error("❌ [TOOL] Failed to create todo:", error);
+        return {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "Failed to create to-do",
+        };
+      }
+    },
+  }),
+
+  getTodos: tool({
+    description:
+      "Get the user's to-do list, optionally filtered by completion status or project",
+    parameters: z.object({
+      completed: z
+        .boolean()
+        .optional()
+        .describe(
+          "Filter by completion status (true for completed, false for pending)"
+        ),
+      project: z.string().optional().describe("Filter by project name"),
+    }),
+    execute: async ({ completed, project }) => {
+      try {
+        console.log("🛠️ [TOOL] getTodos called:", { completed, project });
+
+        const { userId } = await auth();
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
+
+        const todos = await convex.query(api.todos.getTodos, {
+          userId,
+          completed,
+          project,
+        });
+
+        console.log("✅ [TOOL] Retrieved", todos.length, "todos");
+
+        const formattedTodos = todos.map((todo) => ({
+          id: todo._id,
+          description: todo.description,
+          completed: todo.completed,
+          project: todo.project,
+          tags: todo.tags,
+          priority: todo.priority,
+          dueDate: todo.dueDate
+            ? new Date(todo.dueDate).toISOString().split("T")[0]
+            : undefined,
+          createdAt: new Date(todo._creationTime).toISOString().split("T")[0],
+        }));
+
+        return {
+          success: true,
+          todos: formattedTodos,
+          count: todos.length,
+          message: `Found ${todos.length} to-do${
+            todos.length !== 1 ? "s" : ""
+          }${
+            completed !== undefined
+              ? completed
+                ? " (completed)"
+                : " (pending)"
+              : ""
+          }${project ? ` in project "${project}"` : ""}`,
+        };
+      } catch (error) {
+        console.error("❌ [TOOL] Failed to get todos:", error);
+        return {
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to retrieve to-dos",
+        };
+      }
+    },
+  }),
+
+  toggleTodo: tool({
+    description: "Mark a to-do item as completed or incomplete",
+    parameters: z.object({
+      todoId: z.string().describe("The ID of the to-do item to toggle"),
+      completed: z
+        .boolean()
+        .describe(
+          "Set to true to mark as completed, false to mark as incomplete"
+        ),
+    }),
+    execute: async ({ todoId, completed }) => {
+      try {
+        console.log("🛠️ [TOOL] toggleTodo called:", { todoId, completed });
+
+        const { userId } = await auth();
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
+
+        await convex.mutation(api.todos.toggleTodo, {
+          todoId: todoId as Id<"todos">,
+          userId,
+          completed,
+        });
+
+        console.log("✅ [TOOL] Todo toggled successfully");
+        return {
+          success: true,
+          message: `Successfully marked to-do as ${
+            completed ? "completed" : "incomplete"
+          }`,
+        };
+      } catch (error) {
+        console.error("❌ [TOOL] Failed to toggle todo:", error);
+        return {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "Failed to update to-do",
+        };
+      }
+    },
+  }),
+
+  deleteTodo: tool({
+    description: "Delete a to-do item permanently",
+    parameters: z.object({
+      todoId: z.string().describe("The ID of the to-do item to delete"),
+    }),
+    execute: async ({ todoId }) => {
+      try {
+        console.log("🛠️ [TOOL] deleteTodo called:", { todoId });
+
+        const { userId } = await auth();
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
+
+        await convex.mutation(api.todos.deleteTodo, {
+          todoId: todoId as Id<"todos">,
+          userId,
+        });
+
+        console.log("✅ [TOOL] Todo deleted successfully");
+        return {
+          success: true,
+          message: "Successfully deleted the to-do item",
+        };
+      } catch (error) {
+        console.error("❌ [TOOL] Failed to delete todo:", error);
+        return {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "Failed to delete to-do",
+        };
+      }
+    },
+  }),
+
+  getProjects: tool({
+    description:
+      "Get all project names that the user has assigned to their to-dos",
+    parameters: z.object({}),
+    execute: async () => {
+      try {
+        console.log("🛠️ [TOOL] getProjects called");
+
+        const { userId } = await auth();
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
+
+        const projects = await convex.query(api.todos.getProjects, {
+          userId,
+        });
+
+        console.log("✅ [TOOL] Retrieved", projects.length, "projects");
+        return {
+          success: true,
+          projects,
+          count: projects.length,
+          message: `Found ${projects.length} project${
+            projects.length !== 1 ? "s" : ""
+          }`,
+        };
+      } catch (error) {
+        console.error("❌ [TOOL] Failed to get projects:", error);
+        return {
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to retrieve projects",
+        };
+      }
+    },
+  }),
+
+  getTags: tool({
+    description: "Get all tags that the user has assigned to their to-dos",
+    parameters: z.object({}),
+    execute: async () => {
+      try {
+        console.log("🛠️ [TOOL] getTags called");
+
+        const { userId } = await auth();
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
+
+        const tags = await convex.query(api.todos.getTags, {
+          userId,
+        });
+
+        console.log("✅ [TOOL] Retrieved", tags.length, "tags");
+        return {
+          success: true,
+          tags,
+          count: tags.length,
+          message: `Found ${tags.length} tag${tags.length !== 1 ? "s" : ""}`,
+        };
+      } catch (error) {
+        console.error("❌ [TOOL] Failed to get tags:", error);
+        return {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "Failed to retrieve tags",
+        };
+      }
+    },
+  }),
+};
 
 export async function POST(req: Request) {
   try {
@@ -245,8 +549,11 @@ export async function POST(req: Request) {
             model: openrouter(modelId),
             messages: messagesToSend,
             system:
-              "You are an AI assistant in the T3.1 Chat Clone application. You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
+              "You are an AI assistant in the T3.1 Chat Clone application with powerful to-do management capabilities. You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Additionally, you have access to comprehensive to-do management tools that allow you to help users organize their tasks, projects, and goals. You can create, view, update, complete, and delete to-do items, as well as organize them by projects and tags. When users mention tasks, to-dos, reminders, or things they need to do, proactively offer to help them manage these items. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information. When a user requests their current to-do list, always check a tool for the latest updates instead of relying on the chat messages in the conversation history.",
             temperature: 0.7,
+            // 🛠️ Add to-do management tools for authenticated users
+            tools: todoTools,
+            maxSteps: 5, // Allow multiple tool calls in sequence
             // 🔥 ADD SMOOTH STREAMING for better UI rendering
             experimental_transform: smoothStream({
               delayInMs: 10,

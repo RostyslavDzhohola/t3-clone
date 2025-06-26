@@ -73,23 +73,23 @@ _Goal: Add high-impact features to impress the judges._
 
 ### High-Priority Bonus Features
 
-- [ ] **Resumable Streams:** (This is handled automatically by the tech stack).
+- ✅ **Resumable Streams:** (This is handled automatically by the tech stack).
 - [ ] **Bring Your Own Key (BYOK):**
   - [ ] Create a settings modal to input and save a user's OpenRouter key to `localStorage`.
   - [ ] Pass this key from the client to your Server Action.
   - [ ] Modify the Server Action to use the user's key if it's provided.
-- [ ] **Syntax Highlighting:**
-  - [ ] Install `react-syntax-highlighter`.
-  - [ ] Create a component to wrap message content and apply highlighting to code blocks.
+- ✅ **Syntax Highlighting:**
+  - ✅ Install `react-syntax-highlighter`.
+  - ✅ Create a component to wrap message content and apply highlighting to code blocks.
 
 ### Medium-Priority Bonus Features
 
 - [ ] **Chat Sharing:**
   - [ ] Add a "Share" button that calls a Convex mutation to set a chat's `isPublic` flag to `true`.
   - [ ] Create a dynamic page `app/share/[chatId]/page.tsx` to fetch and display the public chat.
-- [ ] **Model Selector:**
-  - [ ] Add a `<select>` dropdown to the UI.
-  - [ ] Pass the selected model name to your Server Action to be used in the OpenRouter API call.
+- ✅ **Model Selector:**
+  - ✅ Add a `<select>` dropdown to the UI.
+  - ✅ Pass the selected model name to your Server Action to be used in the OpenRouter API call.
 
 ---
 
@@ -116,3 +116,7 @@ _Goal: Ensure quality, document the project, and submit._
 - [ ] Double-check all competition rules.
 - [ ] Submit the project.
 - [ ] Post your work on Twitter to share your progress.
+
+### Ideas
+
+- [ ] Redesign my components to look like Studio Ghibli UI.
