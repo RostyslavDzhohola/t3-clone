@@ -125,6 +125,86 @@ const todoTools = {
     },
   }),
 
+  updateTodo: tool({
+    description:
+      "Update an existing to-do item's properties (description, project, tags, priority, or due date). Always show the user the current to-do list after making updates so they can see the changes.",
+    parameters: z.object({
+      todoId: z.string().describe("The ID of the to-do item to update"),
+      description: z.string().optional().describe("New task description"),
+      project: z.string().optional().describe("New project name"),
+      tags: z.array(z.string()).optional().describe("New tags array"),
+      priority: z
+        .enum(["low", "medium", "high"])
+        .optional()
+        .describe("New priority level"),
+      dueDate: z
+        .string()
+        .optional()
+        .describe(
+          "New due date in ISO format (e.g., '2024-01-15') or null to remove"
+        ),
+    }),
+    execute: async ({
+      todoId,
+      description,
+      project,
+      tags,
+      priority,
+      dueDate,
+    }) => {
+      try {
+        console.log("🛠️ [TOOL] updateTodo called:", {
+          todoId,
+          description,
+          project,
+          tags,
+          priority,
+          dueDate,
+        });
+
+        const { userId } = await auth();
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
+
+        // Parse due date if provided
+        let dueDateTimestamp: number | undefined;
+        if (dueDate) {
+          const parsedDate = new Date(dueDate);
+          if (isNaN(parsedDate.getTime())) {
+            throw new Error("Invalid date format provided");
+          }
+          dueDateTimestamp = parsedDate.getTime();
+        }
+
+        await convex.mutation(api.todos.updateTodo, {
+          todoId: todoId as Id<"todos">,
+          userId,
+          description,
+          project,
+          tags,
+          priority,
+          dueDate: dueDateTimestamp,
+        });
+
+        console.log("✅ [TOOL] Todo updated successfully");
+        return {
+          success: true,
+          message: `Successfully updated to-do item${
+            description ? ` with new description: "${description}"` : ""
+          }`,
+        };
+      } catch (error) {
+        console.error("❌ [TOOL] Failed to update todo:", error);
+        return {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "Failed to update to-do",
+        };
+      }
+    },
+  }),
+
   getTodos: tool({
     description:
       "Get the user's to-do list, optionally filtered by completion status or project",
@@ -195,7 +275,8 @@ const todoTools = {
   }),
 
   toggleTodo: tool({
-    description: "Mark a to-do item as completed or incomplete",
+    description:
+      "Find the correct to-do item by its ID number and mark it as complete",
     parameters: z.object({
       todoId: z.string().describe("The ID of the to-do item to toggle"),
       completed: z
