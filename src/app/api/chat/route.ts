@@ -276,9 +276,13 @@ const todoTools = {
 
   toggleTodo: tool({
     description:
-      "Find the correct to-do item by its ID number and mark it as complete",
+      "Mark a to-do item as complete or incomplete. CRITICAL: You must first call getTodos to retrieve the current list and use the exact 'id' field from that response. Never guess or use simple numbers as todoId.",
     parameters: z.object({
-      todoId: z.string().describe("The ID of the to-do item to toggle"),
+      todoId: z
+        .string()
+        .describe(
+          "The exact database ID from getTodos response (e.g., 'j97abc123xyz') - NOT a simple number"
+        ),
       completed: z
         .boolean()
         .describe(
