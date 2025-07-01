@@ -1,6 +1,6 @@
 # 🏆 T3 Hackathon Submission
 
-**T3 Hackathon Submission Branch:** `https://github.com/RostyslavDzhohola/t3-clone/tree/t3-hackathon-submission`
+**T3 Hackathon Submission Branch:** https://github.com/RostyslavDzhohola/t3-clone/tree/t3-hackathon-submission
 **Try it on:** https://t3-clone-hackathon-26upbi4c0-rostyslav-dzhoholas-projects.vercel.app/
 
 ---
