@@ -97,7 +97,11 @@ export default function ChatUI({
       ? convertedMessages
       : currentAnonymousChat?.messages || [],
     // 🔥 KEY CHANGE: Only send the new user message to server, not full history
-    experimental_prepareRequestBody: ({ messages }) => {
+    experimental_prepareRequestBody: ({
+      messages,
+    }: {
+      messages: Message[];
+    }) => {
       // For authenticated users with chatId: only send the new message
       if (user && chatId) {
         const lastMessage = messages[messages.length - 1];
@@ -119,7 +123,7 @@ export default function ChatUI({
         anonymousMessageCount: anonymousAiMessageCount,
       };
     },
-    onFinish: (message) => {
+    onFinish: (message: Message) => {
       handleAiMessageFinish(message);
       // No automatic scrolling - stay where you are
     },

@@ -39,7 +39,9 @@ export function SidebarHistoryItem({
             : ""
         }`}
       >
-        <span className="truncate flex-1 text-left">{chat.title}</span>
+        <span className="truncate flex-1 text-left text-sm pl-1">
+          {chat.title}
+        </span>
       </SidebarMenuButton>
       <SidebarMenuAction showOnHover>
         <DeleteChatDialog

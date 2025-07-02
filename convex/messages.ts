@@ -27,7 +27,7 @@ export const createChat = mutation({
   },
 });
 
-// Get all chats for a user
+// Get all chats for a user sorted by last message time (most recent first)
 export const getChats = query({
   args: {
     userId: v.string(),
@@ -47,11 +47,15 @@ export const getChats = query({
     try {
       const chats = await ctx.db
         .query("chats")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .withIndex("by_user_last_message", (q) => q.eq("userId", args.userId))
         .order("desc")
         .collect();
 
-      console.log("✅ [CONVEX] Found", chats.length, "chats for user");
+      console.log(
+        "✅ [CONVEX] Found",
+        chats.length,
+        "chats for user, sorted by last message time"
+      );
       return chats;
     } catch (error) {
       console.error("❌ [CONVEX] Failed to get chats:", error);
