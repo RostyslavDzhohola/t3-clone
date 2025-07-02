@@ -8,7 +8,7 @@ export default function DataFastWidget() {
       title="View DataFast Analytics Dashboard"
     >
       <iframe
-        src="https://datafa.st/widgets/684a2754569da665c6b838ca/realtime?mainTextSize=10&primaryColor=%233cda10&theme=light"
+        src="https://datafa.st/widgets/684a2754569da665c6b838ca/realtime?mainTextSize=16&primaryColor=%23e78468"
         style={{
           background: "transparent",
           border: "none",
