@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { ChatLayout, ChatUI } from "@/components";
+import { ChatUI } from "@/components";
 import WelcomeScreen from "@/components/welcome-screen";
 import MobileWarning from "@/components/mobile-warning";
 
@@ -55,9 +55,5 @@ export default function Home() {
   }
 
   // Show chat interface for signed-in users
-  return (
-    <ChatLayout>
-      <ChatUI />
-    </ChatLayout>
-  );
+  return <ChatUI />;
 }
