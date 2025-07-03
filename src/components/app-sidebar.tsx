@@ -18,43 +18,20 @@ import { SidebarSearch } from "./sidebar-search";
 import { SidebarHistory } from "./sidebar-history";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  getObjectFromStorage,
-  setObjectInStorage,
-  generateAnonymousChatId,
-} from "@/lib/chatHelpers";
-import { ANONYMOUS_STORAGE_KEYS, LocalStorageChat } from "@/lib/constants";
 
 interface AppSidebarProps {
   currentChatId?: string;
   onChatSelect?: (chatId: string) => void;
-  isAnonymousLimitReached?: boolean;
 }
 
-export function AppSidebar({
-  currentChatId,
-  onChatSelect,
-  isAnonymousLimitReached,
-}: AppSidebarProps) {
+export function AppSidebar({ currentChatId, onChatSelect }: AppSidebarProps) {
   const { user } = useUser();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreatingChat, setIsCreatingChat] = useState(false);
-  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
 
   // Convex mutations for authenticated users
   const createChat = useMutation(api.messages.createChat);
-
-  // Anonymous chats from localStorage
-  const [anonymousChats, setAnonymousChats] = useState<LocalStorageChat[]>(
-    () => {
-      if (typeof window === "undefined") return [];
-      return getObjectFromStorage<LocalStorageChat[]>(
-        ANONYMOUS_STORAGE_KEYS.CHATS,
-        []
-      );
-    }
-  );
 
   // Create new chat
   const handleNewChat = async () => {
@@ -69,22 +46,6 @@ export function AppSidebar({
           title: "New Chat",
         });
         router.push(`/chat/${chatId}`);
-      } else {
-        // Anonymous user - create in localStorage
-        const newChatId = generateAnonymousChatId();
-        const newChat: LocalStorageChat = {
-          id: newChatId,
-          title: "New Chat",
-          messages: [],
-          createdAt: Date.now(),
-        };
-
-        const updatedChats = [newChat, ...anonymousChats];
-        setAnonymousChats(updatedChats);
-        setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-        localStorage.setItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT, newChatId);
-
-        router.push(`/chat/${newChatId}`);
       }
     } catch (error) {
       console.error("Failed to create chat:", error);
@@ -131,7 +92,7 @@ export function AppSidebar({
           {/* New Chat Button */}
           <Button
             onClick={handleNewChat}
-            disabled={(!user && isAnonymousLimitReached) || isCreatingChat}
+            disabled={!user || isCreatingChat}
             className="w-full mb-3 bg-gray-300 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
           >
             {isCreatingChat ? "Creating..." : "New Chat"}
@@ -150,10 +111,6 @@ export function AppSidebar({
             currentChatId={currentChatId}
             onChatSelect={onChatSelect}
             searchTerm={searchTerm}
-            anonymousChats={anonymousChats}
-            setAnonymousChats={setAnonymousChats}
-            deletingChatId={deletingChatId}
-            setDeletingChatId={setDeletingChatId}
           />
         </SidebarGroup>
       </SidebarContent>

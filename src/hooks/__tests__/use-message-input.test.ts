@@ -251,7 +251,7 @@ describe("useMessageInput", () => {
     it("should handle anonymous users without chat creation", async () => {
       const { result } = renderHook(() =>
         useMessageInput({
-          user: null, // Anonymous user
+          user: null,
           currentChatId: null,
           createNewChat: mockCreateNewChat,
           setCurrentChatId: mockSetCurrentChatId,

@@ -11,12 +11,7 @@ import {
   type CoreMessage,
 } from "ai";
 import { type Message } from "@ai-sdk/react";
-import {
-  getModelById,
-  getDefaultModel,
-  getDefaultAnonymousModel,
-  isModelAvailableForAnonymous,
-} from "@/lib/models";
+import { getModelById, getDefaultModel } from "@/lib/models";
 import { NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
@@ -32,8 +27,6 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY!,
 });
-
-const ANONYMOUS_MESSAGE_LIMIT = 10;
 
 // Create resumable stream context
 const streamContext = createResumableStreamContext({
@@ -434,11 +427,8 @@ const todoTools = {
 export async function POST(req: Request) {
   try {
     // Parse and validate request body
-    let clientMessages: Message[] | undefined;
     let newUserMessage: Message | undefined;
     let selectedModelId: string | undefined;
-    let isAnonymous: boolean = false;
-    let anonymousMessageCount: number = 0;
     let chatId: string | undefined;
 
     try {
@@ -449,28 +439,11 @@ export async function POST(req: Request) {
         // New format: server-side history management for authenticated users
         newUserMessage = body.newMessage;
         selectedModelId = body.model;
-        isAnonymous = body.anonymous;
         chatId = body.chatId;
         console.log(
           "📦 [SERVER] New format - authenticated user with chatId:",
           chatId
         );
-      } else {
-        // Legacy format: anonymous users or fallback
-        clientMessages = body.messages;
-        selectedModelId = body.model;
-        isAnonymous = body.anonymous === true;
-        anonymousMessageCount = body.anonymousMessageCount || 0;
-        chatId = body.chatId;
-
-        // Extract the latest user message for consistency
-        if (clientMessages && clientMessages.length > 0) {
-          const lastMessage = clientMessages[clientMessages.length - 1];
-          if (lastMessage && lastMessage.role === "user") {
-            newUserMessage = lastMessage;
-          }
-        }
-        console.log("📦 [SERVER] Legacy format - anonymous or fallback");
       }
     } catch {
       return NextResponse.json(
@@ -479,29 +452,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check anonymous message limit using the total count from client
-    if (isAnonymous) {
-      // The client sends the total anonymous message count from localStorage
-      // This includes all messages across all chats and sessions
-      if (anonymousMessageCount >= ANONYMOUS_MESSAGE_LIMIT) {
-        return NextResponse.json(
-          { error: "Sorry, you've reached your rate limit" },
-          { status: 429 }
-        );
-      }
-    }
-
     // Get user info for authenticated users
-    let userId: string | null = null;
-    if (!isAnonymous) {
-      const { userId: authUserId } = await auth();
-      userId = authUserId;
-    }
+    const { userId: authUserId } = await auth();
 
     // Prepare messages for AI processing
     let messagesToSend: CoreMessage[] = [];
 
-    if (!isAnonymous && userId && chatId && newUserMessage) {
+    if (authUserId && chatId && newUserMessage) {
       try {
         // 🔥 SERVER-SIDE HISTORY MANAGEMENT FOR AUTHENTICATED USERS
         console.log(
@@ -550,7 +507,7 @@ export async function POST(req: Request) {
         // Save the new user message to database
         await convex.mutation(api.messages.saveMessage, {
           chatId: chatId as Id<"chats">,
-          userId,
+          userId: authUserId,
           role: "user",
           body: newUserMessage.content as string,
         });
@@ -563,10 +520,6 @@ export async function POST(req: Request) {
         // Fallback to using just the new message if database operations fail
         messagesToSend = convertToCoreMessages([newUserMessage]);
       }
-    } else if (clientMessages) {
-      // 🔥 ANONYMOUS USERS: use client messages directly (no database persistence)
-      messagesToSend = convertToCoreMessages(clientMessages);
-      console.log("📤 [SERVER] Using client messages directly (anonymous)");
     } else {
       return NextResponse.json(
         { error: "No messages provided" },
@@ -577,34 +530,21 @@ export async function POST(req: Request) {
     // Use selected model or fallback to default
     let selectedModel:
       | ReturnType<typeof getModelById>
-      | ReturnType<typeof getDefaultModel>
-      | ReturnType<typeof getDefaultAnonymousModel>;
+      | ReturnType<typeof getDefaultModel>;
 
     if (selectedModelId) {
       const requestedModel = getModelById(selectedModelId);
 
-      if (isAnonymous) {
-        // Anonymous users can only use Gemini 2.5 Flash
-        if (requestedModel && isModelAvailableForAnonymous(requestedModel.id)) {
-          selectedModel = requestedModel;
-        } else {
-          // Force anonymous users to use Gemini 2.5 Flash
-          selectedModel = getDefaultAnonymousModel();
-        }
+      // Authenticated users - validate that the model exists and is available
+      if (requestedModel && requestedModel.available) {
+        selectedModel = requestedModel;
       } else {
-        // Authenticated users - validate that the model exists and is available
-        if (requestedModel && requestedModel.available) {
-          selectedModel = requestedModel;
-        } else {
-          // Fall back to default model if requested model is unavailable or doesn't exist
-          selectedModel = getDefaultModel();
-        }
+        // Fall back to default model if requested model is unavailable or doesn't exist
+        selectedModel = getDefaultModel();
       }
     } else {
       // No model specified - use appropriate default
-      selectedModel = isAnonymous
-        ? getDefaultAnonymousModel()
-        : getDefaultModel();
+      selectedModel = getDefaultModel();
     }
 
     // Ensure selectedModel is defined before accessing its id
@@ -618,7 +558,7 @@ export async function POST(req: Request) {
     const modelId = selectedModel.id;
 
     // 🔥 RESUMABLE STREAMS: For authenticated users only
-    if (!isAnonymous && userId && chatId) {
+    if (authUserId && chatId) {
       // Generate a unique stream ID for this generation
       const streamId = generateId();
 
@@ -626,7 +566,7 @@ export async function POST(req: Request) {
       await convex.mutation(api.messages.appendStreamId, {
         chatId: chatId as Id<"chats">,
         streamId,
-        userId,
+        userId: authUserId,
       });
 
       console.log("🎬 [SERVER] Created resumable stream:", streamId);
@@ -684,7 +624,7 @@ export async function POST(req: Request) {
                 if (finishResult.text) {
                   await convex.mutation(api.messages.saveMessage, {
                     chatId: chatId as Id<"chats">,
-                    userId,
+                    userId: authUserId,
                     role: "assistant",
                     body: finishResult.text,
                   });
@@ -724,22 +664,6 @@ export async function POST(req: Request) {
       return new Response(
         await streamContext.resumableStream(streamId, () => stream)
       );
-    } else {
-      // 🔥 ANONYMOUS USERS: Use regular streaming (no resumability)
-      const result = streamText({
-        model: openrouter(modelId),
-        messages: messagesToSend,
-        system:
-          "You are an AI assistant in the T3.1 Chat Clone application (Anonymous Mode). You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
-        temperature: 0.7,
-        // 🔥 ADD SMOOTH STREAMING for better UI rendering
-        experimental_transform: smoothStream({
-          delayInMs: 10,
-          chunking: "word",
-        }),
-      });
-
-      return result.toDataStreamResponse();
     }
   } catch (error) {
     console.error("Error in chat API:", error);

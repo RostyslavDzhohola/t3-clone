@@ -117,17 +117,3 @@ export function getDefaultModel(): LLMModel {
     "No available LLM models found – please check your AVAILABLE_MODELS configuration."
   );
 }
-
-/**
- * Get the default model for anonymous users (always Gemini 2.5 Flash)
- */
-export function getDefaultAnonymousModel(): LLMModel {
-  return ANONYMOUS_MODEL;
-}
-
-/**
- * Check if a model is available for anonymous users
- */
-export function isModelAvailableForAnonymous(modelId: string): boolean {
-  return modelId === ANONYMOUS_MODEL.id;
-}

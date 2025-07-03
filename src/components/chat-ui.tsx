@@ -6,37 +6,15 @@ import { useChat, type Message } from "@ai-sdk/react";
 import { useChatLogic } from "@/hooks/use-chat-logic";
 import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 import { useAutoResume } from "@/hooks/use-auto-resume";
-import { LocalStorageChat } from "@/lib/constants";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
-// import RemainingLimitBanner from "./remaining-limit-banner";
 
 interface ChatUIProps {
   chatId?: string;
-  anonymousMessageCount?: number;
-  anonymousAiMessageCount?: number;
-  isAnonymousLimitReached?: boolean;
-  ANONYMOUS_MESSAGE_LIMIT?: number;
-  onAnonymousAiMessageUpdate?: (count: number) => void;
-  onAnonymousChatsUpdate?: (chats: LocalStorageChat[]) => void;
-  onCurrentAnonymousChatUpdate?: (chat: LocalStorageChat | null) => void;
-  // Anonymous chat operations from useChatManagement
-  addMessageToAnonymousChat?: (message: Message, chatId: string) => void;
-  currentAnonymousChat?: LocalStorageChat | null;
 }
 
-export default function ChatUI({
-  chatId,
-  anonymousMessageCount = 0,
-  anonymousAiMessageCount = 0,
-  // isAnonymousLimitReached = false,
-  ANONYMOUS_MESSAGE_LIMIT = 10,
-  onAnonymousAiMessageUpdate,
-  addMessageToAnonymousChat,
-  currentAnonymousChat,
-}: ChatUIProps) {
+export default function ChatUI({ chatId }: ChatUIProps) {
   const { user } = useUser();
-  // const [bannerClosed, setBannerClosed] = useState(false);
   const [isContentReady, setIsContentReady] = useState(false);
   const [currentLoadingChatId, setCurrentLoadingChatId] = useState<
     string | null
@@ -62,12 +40,6 @@ export default function ChatUI({
     handleModelChange,
   } = useChatLogic({
     chatId,
-    anonymousMessageCount,
-    anonymousAiMessageCount,
-    ANONYMOUS_MESSAGE_LIMIT,
-    onAnonymousAiMessageUpdate,
-    addMessageToAnonymousChat,
-    currentAnonymousChat,
   });
 
   // Set up useChat hook with server-side history management and resumable streams
@@ -90,12 +62,8 @@ export default function ChatUI({
     body: {
       model: selectedModel.id,
       chatId: user ? chatId : undefined,
-      anonymous: !user,
-      anonymousMessageCount: !user ? anonymousAiMessageCount : undefined,
     },
-    initialMessages: user
-      ? convertedMessages
-      : currentAnonymousChat?.messages || [],
+    initialMessages: convertedMessages,
     // 🔥 KEY CHANGE: Only send the new user message to server, not full history
     experimental_prepareRequestBody: ({
       messages,
@@ -110,17 +78,13 @@ export default function ChatUI({
           newMessage: lastMessage,
           model: selectedModel.id,
           chatId: chatId,
-          anonymous: false,
         };
       }
 
-      // For anonymous users: send all messages (no database persistence)
       return {
         messages,
         model: selectedModel.id,
         chatId: undefined,
-        anonymous: true,
-        anonymousMessageCount: anonymousAiMessageCount,
       };
     },
     onFinish: (message: Message) => {
@@ -132,9 +96,7 @@ export default function ChatUI({
   // 🔥 RESUMABLE STREAMS: Auto-resume streams for authenticated users
   useAutoResume({
     autoResume: Boolean(user && chatId),
-    initialMessages: user
-      ? convertedMessages
-      : currentAnonymousChat?.messages || [],
+    initialMessages: convertedMessages,
     experimental_resume,
     data,
     setMessages,
@@ -142,7 +104,7 @@ export default function ChatUI({
 
   // Handle chat switching - set loading state
   useEffect(() => {
-    const newChatId = user ? chatId : currentAnonymousChat?.id;
+    const newChatId = chatId;
     if (newChatId && newChatId !== currentLoadingChatId) {
       setIsContentReady(false);
       setCurrentLoadingChatId(newChatId);
@@ -152,7 +114,7 @@ export default function ChatUI({
       setIsContentReady(true);
       setCurrentLoadingChatId(null);
     }
-  }, [chatId, currentAnonymousChat, user, currentLoadingChatId]);
+  }, [chatId, user, currentLoadingChatId]);
 
   // Helper function to wait for content to be rendered and scrolled
   const waitForContentAndReveal = useCallback(
@@ -223,15 +185,6 @@ export default function ChatUI({
     }
   }, [user, convertedMessages, setMessages, waitForContentAndReveal]);
 
-  // Update messages when anonymous chat changes
-  useEffect(() => {
-    if (!user && currentAnonymousChat) {
-      setMessages(currentAnonymousChat.messages);
-      // Wait for content to be properly loaded and positioned
-      waitForContentAndReveal(currentAnonymousChat.messages.length);
-    }
-  }, [user, currentAnonymousChat, setMessages, waitForContentAndReveal]);
-
   // Set up Intersection Observer for scroll anchor
   useEffect(() => {
     const element = endRef.current;
@@ -287,13 +240,7 @@ export default function ChatUI({
           isContentReady ? "opacity-100" : "opacity-0"
         }`}
       >
-        <ChatContent
-          messages={messages}
-          status={status}
-          isAnonymous={!user}
-          anonymousMessageCount={user ? undefined : anonymousMessageCount}
-          anonymousMessageLimit={user ? undefined : ANONYMOUS_MESSAGE_LIMIT}
-        />
+        <ChatContent messages={messages} status={status} />
         {/* Scroll anchor element */}
         <div
           ref={endRef}
@@ -320,11 +267,7 @@ export default function ChatUI({
               onInputChange={handleInputChange}
               onSubmit={handleSubmitWithScroll}
               disabled={status === "submitted"}
-              placeholder={
-                !user
-                  ? "Type your message here... (Anonymous mode)"
-                  : "Type your message here..."
-              }
+              placeholder="Type your message here..."
               selectedModel={selectedModel}
               onModelChange={handleModelChange}
             />

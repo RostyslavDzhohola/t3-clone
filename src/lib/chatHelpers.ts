@@ -1,9 +1,5 @@
 import { type Message } from "@ai-sdk/react";
-import {
-  ANONYMOUS_STORAGE_KEYS,
-  MAX_CHAT_TITLE_LENGTH,
-  DEFAULT_CHAT_TITLE,
-} from "./constants";
+import { MAX_CHAT_TITLE_LENGTH, DEFAULT_CHAT_TITLE } from "./constants";
 
 // ────────────────────────────────────────────────────────────────────────────────
 // 📝 Chat Title Functions
@@ -66,28 +62,8 @@ export const createAssistantMessage = (
 };
 
 // ────────────────────────────────────────────────────────────────────────────────
-// 🔒 Anonymous Chat Functions
+// 🔒 Convex Chat Functions
 // ────────────────────────────────────────────────────────────────────────────────
-
-/**
- * Check if a chat ID belongs to an anonymous chat
- * @param id - The chat ID to check
- * @returns True if the ID is an anonymous chat ID
- */
-export const isAnonymousChatId = (id: string | null | undefined): boolean => {
-  if (!id || typeof id !== "string") return false;
-  return id.startsWith("anon_");
-};
-
-/**
- * Generate a unique anonymous chat ID
- * @returns Unique anonymous chat ID with timestamp and random suffix
- */
-export const generateAnonymousChatId = (): string => {
-  const timestamp = Date.now();
-  const randomSuffix = Math.random().toString(36).substr(2, 9);
-  return `anon_${timestamp}_${randomSuffix}`;
-};
 
 /**
  * Check if a chat ID is a valid Convex database ID
@@ -96,33 +72,20 @@ export const generateAnonymousChatId = (): string => {
  */
 export const isConvexChatId = (id: string | null | undefined): boolean => {
   if (!id || typeof id !== "string") return false;
-  return !isAnonymousChatId(id) && id.length > 10;
+  return id.length > 10;
 };
 
 // ────────────────────────────────────────────────────────────────────────────────
-// 🧮 Anonymous Usage Functions
+// 🧮 Convex Usage Functions
 // ────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Calculate remaining anonymous messages
- * @param currentCount - Current AI message count
- * @param limit - Maximum allowed messages
- * @returns Number of remaining messages (0 if limit reached)
- */
-export const calculateRemainingMessages = (
-  currentCount: number,
-  limit: number
-): number => {
-  return Math.max(0, limit - currentCount);
-};
-
-/**
- * Check if anonymous user has reached their message limit
+ * Check if user has reached their message limit
  * @param currentCount - Current AI message count
  * @param limit - Maximum allowed messages
  * @returns True if limit is reached or exceeded
  */
-export const isAnonymousLimitReached = (
+export const isLimitReached = (
   currentCount: number,
   limit: number
 ): boolean => {
@@ -233,25 +196,5 @@ export const setStringInStorage = (key: string, value: string): void => {
     localStorage.setItem(key, value);
   } catch (error) {
     console.warn(`Failed to save to localStorage (${key}):`, error);
-  }
-};
-
-// ────────────────────────────────────────────────────────────────────────────────
-// 🗑️ Cleanup Functions
-// ────────────────────────────────────────────────────────────────────────────────
-
-/**
- * Clear all anonymous user data from localStorage
- */
-export const clearAnonymousData = (): void => {
-  if (typeof window === "undefined") return;
-
-  try {
-    Object.values(ANONYMOUS_STORAGE_KEYS).forEach((key) => {
-      localStorage.removeItem(key);
-    });
-    console.log("🧹 Anonymous data cleared from localStorage");
-  } catch (error) {
-    console.warn("Failed to clear anonymous data:", error);
   }
 };

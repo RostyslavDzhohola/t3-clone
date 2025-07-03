@@ -9,8 +9,6 @@ import { SidebarMenu, SidebarGroupContent } from "@/components/ui/sidebar";
 import { SidebarHistoryItem } from "./sidebar-history-item";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { setObjectInStorage } from "@/lib/chatHelpers";
-import { ANONYMOUS_STORAGE_KEYS, LocalStorageChat } from "@/lib/constants";
 
 interface Chat {
   _id: Id<"chats"> | string;
@@ -27,10 +25,6 @@ interface SidebarHistoryProps {
   currentChatId?: string;
   onChatSelect?: (chatId: string) => void;
   searchTerm: string;
-  anonymousChats: LocalStorageChat[];
-  setAnonymousChats: (chats: LocalStorageChat[]) => void;
-  deletingChatId: string | null;
-  setDeletingChatId: (id: string | null) => void;
 }
 
 // Helper function to get time period for a timestamp
@@ -92,10 +86,6 @@ export function SidebarHistory({
   currentChatId,
   onChatSelect,
   searchTerm,
-  anonymousChats,
-  setAnonymousChats,
-  deletingChatId,
-  setDeletingChatId,
 }: SidebarHistoryProps) {
   const { user } = useUser();
   const router = useRouter();
@@ -116,11 +106,7 @@ export function SidebarHistory({
           title: chat.title,
           lastActivity: chat.lastMessageTime || chat._creationTime,
         })) || []
-      : anonymousChats.map((chat) => ({
-          _id: chat.id,
-          title: chat.title,
-          lastActivity: chat.createdAt,
-        }));
+      : [];
 
     // Filter chats based on search term
     const filteredChats = !searchTerm.trim()
@@ -131,7 +117,7 @@ export function SidebarHistory({
 
     // Group chats by time periods
     return groupChatsByTime(filteredChats);
-  }, [user, chats, anonymousChats, searchTerm]);
+  }, [user, chats, searchTerm]);
 
   // Handle chat selection
   const handleChatSelect = (chatId: string) => {
@@ -144,8 +130,6 @@ export function SidebarHistory({
 
   // Handle delete chat
   const handleDeleteChat = async (chatId: Id<"chats"> | string) => {
-    setDeletingChatId(chatId as string);
-
     try {
       if (user) {
         // Authenticated user - delete from Convex
@@ -159,16 +143,8 @@ export function SidebarHistory({
           router.push("/");
         }
       } else {
-        // Anonymous user - delete from localStorage
-        const updatedChats = anonymousChats.filter(
-          (chat) => chat.id !== chatId
-        );
-        setAnonymousChats(updatedChats);
-        setObjectInStorage(ANONYMOUS_STORAGE_KEYS.CHATS, updatedChats);
-
         // Navigate away if we're deleting current chat
         if (currentChatId === chatId) {
-          localStorage.removeItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT);
           router.push("/");
         }
       }
@@ -177,8 +153,6 @@ export function SidebarHistory({
     } catch (error) {
       console.error("Failed to delete chat:", error);
       toast.error("Failed to delete chat");
-    } finally {
-      setDeletingChatId(null);
     }
   };
 
@@ -202,7 +176,7 @@ export function SidebarHistory({
                 isActive={currentChatId === chat._id}
                 onChatSelect={handleChatSelect}
                 onDelete={handleDeleteChat}
-                isDeleting={deletingChatId === chat._id}
+                isDeleting={false}
               />
             ))}
           </SidebarMenu>

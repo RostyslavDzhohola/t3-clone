@@ -11,18 +11,9 @@ import ChatMessage from "@/components/chat-message";
 interface ChatContentProps {
   messages: Array<UIMessage>;
   status: UseChatHelpers["status"];
-  isAnonymous?: boolean;
-  anonymousMessageCount?: number;
-  anonymousMessageLimit?: number;
 }
 
-export default function ChatContent({
-  messages,
-  status,
-  isAnonymous = false,
-}: // anonymousMessageCount,
-// anonymousMessageLimit,
-ChatContentProps) {
+export default function ChatContent({ messages, status }: ChatContentProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const previousScrollHeightRef = useRef<number>(0);
   const [currentDelta, setCurrentDelta] = useState<number>(0);
@@ -137,7 +128,7 @@ ChatContentProps) {
               </div>
             </div>
             <h3 className="text-xl font-semibold mb-3 text-gray-700">
-              {isAnonymous ? "Anonymous Chat" : "Start a conversation"}
+              Start a conversation
             </h3>
             <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
               Type a message below to begin your conversation. I&apos;m here to

@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Id } from "../../convex/_generated/dataModel";
-import { type Message } from "@ai-sdk/react";
-import { LocalStorageChat, ANONYMOUS_STORAGE_KEYS } from "@/lib/constants";
 
 interface Chat {
   _id: Id<"chats">;
@@ -12,9 +10,6 @@ interface Chat {
 interface UseChatNavigationProps {
   user: { id: string } | null | undefined;
   chats: Chat[] | undefined;
-  anonymousChats: LocalStorageChat[];
-  setMessages: (messages: Message[]) => void;
-  setCurrentAnonymousChat: (chat: LocalStorageChat | null) => void;
 }
 
 interface UseChatNavigationReturn {
@@ -28,9 +23,6 @@ interface UseChatNavigationReturn {
 export function useChatNavigation({
   user,
   chats,
-  anonymousChats,
-  setMessages,
-  setCurrentAnonymousChat,
 }: UseChatNavigationProps): UseChatNavigationReturn {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,13 +39,7 @@ export function useChatNavigation({
       setCurrentChatId(chatId as Id<"chats">);
       router.push(`/chat/${chatId}`);
     } else if (!user && typeof chatId === "string") {
-      // Anonymous user with localStorage chat
-      const chat = anonymousChats.find((c) => c.id === chatId);
-      if (chat) {
-        setCurrentAnonymousChat(chat);
-        setCurrentChatId(chatId);
-        localStorage.setItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT, chatId);
-      }
+      setCurrentChatId(chatId);
     }
   };
 
@@ -65,23 +51,9 @@ export function useChatNavigation({
         console.log("🏠 Auto-selecting first chat:", firstChat._id);
         setCurrentChatId(firstChat._id);
         router.push(`/chat/${firstChat._id}`);
-      } else if (!user && anonymousChats.length > 0) {
-        const firstChat = anonymousChats[0];
-        console.log("🏠 Auto-selecting first anonymous chat:", firstChat.id);
-        setCurrentAnonymousChat(firstChat);
-        setCurrentChatId(firstChat.id);
-        localStorage.setItem(ANONYMOUS_STORAGE_KEYS.CURRENT_CHAT, firstChat.id);
       }
     }
-  }, [
-    pathname,
-    currentChatId,
-    user,
-    chats,
-    anonymousChats,
-    router,
-    setCurrentAnonymousChat,
-  ]);
+  }, [pathname, currentChatId, user, chats, router]);
 
   // Extract chat ID from URL if we're on a chat page (only for authenticated users)
   const syncChatFromUrl = useCallback(() => {
@@ -97,26 +69,12 @@ export function useChatNavigation({
   // Auto-select first chat effect
   useEffect(() => {
     autoSelectFirstChat();
-  }, [
-    user,
-    chats,
-    anonymousChats,
-    currentChatId,
-    pathname,
-    autoSelectFirstChat,
-  ]);
+  }, [user, chats, currentChatId, pathname, autoSelectFirstChat]);
 
   // URL synchronization effect
   useEffect(() => {
     syncChatFromUrl();
   }, [user, pathname, currentChatId, syncChatFromUrl]);
-
-  // Clear messages when no chat is selected
-  useEffect(() => {
-    if (!currentChatId) {
-      setMessages([]);
-    }
-  }, [currentChatId, setMessages]);
 
   return {
     currentChatId,

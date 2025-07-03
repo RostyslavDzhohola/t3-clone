@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { type Message } from "@ai-sdk/react";
@@ -6,44 +6,21 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import {
   getDefaultModel,
-  getDefaultAnonymousModel,
   getAvailableModels,
   type LLMModel,
 } from "@/lib/models";
-import {
-  LocalStorageChat,
-  ANONYMOUS_MESSAGE_LIMIT,
-  MODEL_STORAGE_KEY,
-} from "@/lib/constants";
+import { MODEL_STORAGE_KEY } from "@/lib/constants";
 import {
   generateChatTitle,
-  createUserMessage,
   setStringInStorage,
   getStringFromStorage,
 } from "@/lib/chatHelpers";
-import { toast } from "sonner";
 
 interface ChatLogicOptions {
   chatId?: string;
-  anonymousMessageCount?: number;
-  anonymousAiMessageCount?: number;
-  ANONYMOUS_MESSAGE_LIMIT?: number;
-  onAnonymousAiMessageUpdate?: (count: number) => void;
-  onAnonymousChatsUpdate?: (chats: LocalStorageChat[]) => void;
-  onCurrentAnonymousChatUpdate?: (chat: LocalStorageChat | null) => void;
-  // Anonymous chat operations from useChatManagement
-  addMessageToAnonymousChat?: (message: Message, chatId: string) => void;
-  currentAnonymousChat?: LocalStorageChat | null;
 }
 
-export function useChatLogic({
-  chatId,
-  anonymousAiMessageCount = 0,
-  ANONYMOUS_MESSAGE_LIMIT: messageLimitProp = ANONYMOUS_MESSAGE_LIMIT,
-  onAnonymousAiMessageUpdate,
-  addMessageToAnonymousChat,
-  currentAnonymousChat,
-}: ChatLogicOptions) {
+export function useChatLogic({ chatId }: ChatLogicOptions) {
   const { user } = useUser();
 
   // Model selection state
@@ -53,9 +30,7 @@ export function useChatLogic({
       if (stored) {
         try {
           const parsedModel = JSON.parse(stored) as LLMModel;
-          const availableModels = user
-            ? getAvailableModels()
-            : [getDefaultAnonymousModel()];
+          const availableModels = getAvailableModels();
           const isValidModel = availableModels.some(
             (m: LLMModel) => m.id === parsedModel.id
           );
@@ -67,17 +42,11 @@ export function useChatLogic({
         }
       }
     }
-    return user ? getDefaultModel() : getDefaultAnonymousModel();
+    return getDefaultModel();
   });
 
   // AI message processing state
   const lastProcessedAiMessageId = useRef<string | null>(null);
-  const anonymousAiMessageCountRef = useRef(anonymousAiMessageCount);
-
-  // Keep refs in sync
-  useEffect(() => {
-    anonymousAiMessageCountRef.current = anonymousAiMessageCount;
-  }, [anonymousAiMessageCount]);
 
   // Convex mutations (only need updateChatTitle now)
   const updateChatTitle = useMutation(api.messages.updateChatTitle);
@@ -106,16 +75,10 @@ export function useChatLogic({
   const handleAiMessageFinish = async (message: Message) => {
     // Server now handles saving for authenticated users
     if (!user) {
-      // Only handle anonymous users on client side
       if (lastProcessedAiMessageId.current === message.id) {
         return;
       }
       lastProcessedAiMessageId.current = message.id;
-
-      if (currentAnonymousChat && addMessageToAnonymousChat) {
-        addMessageToAnonymousChat(message, currentAnonymousChat.id);
-        onAnonymousAiMessageUpdate?.(anonymousAiMessageCountRef.current + 1);
-      }
     }
   };
 
@@ -132,12 +95,6 @@ export function useChatLogic({
   ) => {
     return async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-
-      // Check anonymous message limit
-      if (!user && anonymousAiMessageCount >= messageLimitProp) {
-        toast.error("Sorry, you've reached your rate limit");
-        return;
-      }
 
       if (user) {
         // Server will handle message saving
@@ -162,21 +119,8 @@ export function useChatLogic({
 
         handleSubmit(e);
       } else {
-        // For anonymous users
         if (!input.trim()) return;
 
-        if (!currentAnonymousChat) {
-          toast.error("Please create a new chat first");
-          return;
-        }
-
-        // Create and save user message using centralized management
-        const userMessage = createUserMessage(input);
-        if (addMessageToAnonymousChat) {
-          addMessageToAnonymousChat(userMessage, currentAnonymousChat.id);
-        }
-
-        // Use append for AI response
         await append({
           role: "user",
           content: input,
@@ -189,10 +133,6 @@ export function useChatLogic({
 
   // Handle model change
   const handleModelChange = (model: LLMModel) => {
-    if (!user && model.id !== getDefaultAnonymousModel().id) {
-      return;
-    }
-
     setSelectedModel(model);
 
     if (user) {
