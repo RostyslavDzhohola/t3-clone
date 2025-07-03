@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -90,6 +90,9 @@ export function SidebarHistory({
   const { user } = useUser();
   const router = useRouter();
 
+  // State to track which chat is being deleted
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
+
   // Convex queries and mutations for authenticated users
   const chats = useQuery(
     api.messages.getChats,
@@ -131,6 +134,9 @@ export function SidebarHistory({
   // Handle delete chat
   const handleDeleteChat = async (chatId: Id<"chats"> | string) => {
     try {
+      // Set deleting state
+      setDeletingChatId(chatId as string);
+
       if (user) {
         // Authenticated user - delete from Convex
         await deleteChat({
@@ -153,6 +159,9 @@ export function SidebarHistory({
     } catch (error) {
       console.error("Failed to delete chat:", error);
       toast.error("Failed to delete chat");
+    } finally {
+      // Clear deleting state
+      setDeletingChatId(null);
     }
   };
 
@@ -176,7 +185,7 @@ export function SidebarHistory({
                 isActive={currentChatId === chat._id}
                 onChatSelect={handleChatSelect}
                 onDelete={handleDeleteChat}
-                isDeleting={false}
+                isDeleting={deletingChatId === chat._id}
               />
             ))}
           </SidebarMenu>
