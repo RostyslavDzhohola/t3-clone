@@ -7,6 +7,7 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { useRef } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SidebarUserNav() {
   const userButtonRef = useRef<HTMLDivElement>(null);
@@ -31,20 +32,30 @@ export function SidebarUserNav() {
     <SidebarMenu>
       <SidebarMenuItem>
         <SignedOut>
-          <SignInButton mode="modal">
-            <SidebarMenuButton className="w-full">
-              <span className="mr-2">→</span>
-              Login
-            </SidebarMenuButton>
-          </SignInButton>
+          <div className="flex items-center justify-between w-full">
+            <SignInButton mode="modal">
+              <SidebarMenuButton className="flex-1">
+                <span className="mr-2">→</span>
+                Login
+              </SidebarMenuButton>
+            </SignInButton>
+            <div className="ml-2">
+              <ThemeToggle />
+            </div>
+          </div>
         </SignedOut>
         <SignedIn>
-          <SidebarMenuButton className="w-full" onClick={handleClick}>
-            <div ref={userButtonRef} className="flex items-center w-full">
-              <UserButton />
-              <span className="ml-2">Profile</span>
+          <div className="flex items-center justify-between w-full">
+            <SidebarMenuButton className="flex-1" onClick={handleClick}>
+              <div ref={userButtonRef} className="flex items-center w-full">
+                <UserButton />
+                <span className="ml-2">Profile</span>
+              </div>
+            </SidebarMenuButton>
+            <div className="ml-2">
+              <ThemeToggle />
             </div>
-          </SidebarMenuButton>
+          </div>
         </SignedIn>
       </SidebarMenuItem>
     </SidebarMenu>

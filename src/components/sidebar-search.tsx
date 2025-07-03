@@ -19,7 +19,7 @@ export function SidebarSearch({
         placeholder="Search your chats..."
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="pl-9 bg-sidebar-accent/50 border-sidebar-border"
+        className="pl-9 bg-input border-border"
       />
     </div>
   );

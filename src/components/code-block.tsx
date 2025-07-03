@@ -2,6 +2,7 @@
 
 import { useDeferredValue, memo, useState } from "react";
 import { Highlight, themes, Prism } from "prism-react-renderer";
+import { useTheme } from "next-themes";
 import { CopyButton } from "@/components/copy-button";
 import { TextWrapButton } from "@/components/text-wrap-button";
 
@@ -111,6 +112,12 @@ export const CodeBlock = memo(function CodeBlock({
   // State for text wrapping
   const [isWrapped, setIsWrapped] = useState(false);
 
+  // Get current theme to select appropriate Prism theme
+  const { theme } = useTheme();
+
+  // Select theme based on current mode
+  const prismTheme = theme === "dark" ? themes.oneDark : themes.oneLight;
+
   // 🚀 PERFORMANCE FIX: Defer the code content for tokenization
   // This prevents main thread blocking during streaming
   const deferredCodeContent = useDeferredValue(codeContent);
@@ -127,7 +134,7 @@ export const CodeBlock = memo(function CodeBlock({
       if (shouldInline) {
         return (
           <code
-            className="bg-gray-100 px-1.5 py-0.5 rounded-md text-sm font-mono text-gray-800 border border-gray-200"
+            className="bg-muted px-1.5 py-0.5 rounded-md text-sm font-mono text-foreground border border-border"
             {...props}
           >
             {codeContent}
@@ -138,7 +145,7 @@ export const CodeBlock = memo(function CodeBlock({
       // Otherwise render as a minimal block
       return (
         <pre
-          className="my-4 overflow-x-auto rounded-md bg-gray-100 p-4 text-sm font-mono text-gray-800 border border-gray-200"
+          className="my-4 overflow-x-auto rounded-md bg-muted p-4 text-sm font-mono text-foreground border border-border"
           {...props}
         >
           {codeContent}
@@ -147,12 +154,12 @@ export const CodeBlock = memo(function CodeBlock({
     }
 
     return (
-      <div className="my-6 overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+      <div className="my-6 overflow-hidden rounded-lg border border-border shadow-sm">
         {/* Header with language and buttons - made darker */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-gray-100 border-b border-gray-300">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-muted border-b border-border">
           {/* Scrollable language label - made lowercase */}
-          <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-            <span className="text-sm font-medium text-gray-700 whitespace-nowrap block pr-4">
+          <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground scrollbar-track-transparent">
+            <span className="text-sm font-medium text-foreground whitespace-nowrap block pr-4">
               {language.toLowerCase()}
             </span>
           </div>
@@ -168,24 +175,22 @@ export const CodeBlock = memo(function CodeBlock({
         </div>
 
         {/* Code content with syntax highlighting */}
-        <div className="relative">
+        <div className="relative bg-card">
           <Highlight
-            theme={themes.oneLight}
+            theme={prismTheme}
             code={deferredCodeContent}
             language={language === "shell" ? "bash" : language}
             prism={Prism}
           >
-            {({ className, style, tokens, getLineProps, getTokenProps }) => (
+            {({ className, tokens, getLineProps, getTokenProps }) => (
               <pre
-                className={className}
+                className={`${className} bg-card text-card-foreground`}
                 style={{
-                  ...style,
                   margin: 0,
                   borderRadius: 0,
                   fontSize: "0.875rem",
                   lineHeight: "1.6",
                   padding: "1rem",
-                  background: "#fafafa",
                   fontFamily:
                     'ui-monospace, SFMono-Regular, "SF Mono", monospace',
                   whiteSpace: isWrapped ? "pre-wrap" : "pre",
@@ -209,7 +214,7 @@ export const CodeBlock = memo(function CodeBlock({
   } else {
     return (
       <code
-        className="bg-gray-100 px-1.5 py-0.5 rounded-md text-sm font-mono text-gray-800 border border-gray-200"
+        className="bg-muted px-1.5 py-0.5 rounded-md text-sm font-mono text-foreground border border-border"
         {...props}
       >
         {children}

@@ -93,7 +93,7 @@ export function AppSidebar({ currentChatId, onChatSelect }: AppSidebarProps) {
           <Button
             onClick={handleNewChat}
             disabled={!user || isCreatingChat}
-            className="w-full mb-3 bg-gray-300 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
+            className="w-full mb-3 bg-secondary hover:bg-secondary/80 text-secondary-foreground"
           >
             {isCreatingChat ? "Creating..." : "New Chat"}
           </Button>

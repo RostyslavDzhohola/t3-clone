@@ -32,15 +32,15 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
             isUser
               ? // 👤 USER MESSAGE STYLING
                 // - Limited width (max-w-[85%])
-                // - Gray background (bg-gray-100)
+                // - Semantic background and text colors
                 // - Rounded corners and padding
                 // - Border and shadow for chat bubble effect
-                "max-w-[85%] rounded-2xl px-5 py-4 mr-5 bg-gray-100 text-gray-900 shadow-sm border border-gray-200/50"
+                "max-w-[85%] rounded-2xl px-5 py-4 mr-5 bg-muted text-foreground shadow-sm border border-border/50"
               : // 🤖 ASSISTANT MESSAGE STYLING
                 // - Full width (w-full)
                 // - No background color (transparent)
                 // - Minimal styling for clean appearance
-                "w-full rounded-2xl px-5 py-4 text-gray-900"
+                "w-full rounded-2xl px-5 py-4 text-foreground"
           }
         `}
       >
@@ -50,11 +50,11 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
             ${
               isUser
                 ? // 👤 USER MESSAGE TEXT STYLING
-                  // Same prose styling for consistent typography
-                  "prose-gray prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900"
+                  // Semantic colors for consistent typography
+                  "prose-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground"
                 : // 🤖 ASSISTANT MESSAGE TEXT STYLING
-                  // Same prose styling for consistent typography
-                  "prose-gray prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900"
+                  // Semantic colors for consistent typography
+                  "prose-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground"
             }
             prose-p:mb-1 prose-p:leading-relaxed prose-p:last:mb-0
             prose-headings:mb-3 prose-headings:mt-4 prose-headings:first:mt-0

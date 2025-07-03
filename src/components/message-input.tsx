@@ -72,7 +72,7 @@ export default function MessageInput({
     <div className="w-full">
       <form onSubmit={onSubmit} className="relative" suppressHydrationWarning>
         {/* Main Input Container */}
-        <div className="relative bg-white border border-gray-200 border-b-0 rounded-t-lg shadow-sm focus:variant">
+        <div className="relative bg-background border border-border border-b-0 rounded-t-lg shadow-sm focus:variant">
           {/* Text Input */}
           <textarea
             ref={textareaRef}
@@ -84,7 +84,7 @@ export default function MessageInput({
             disabled={disabled}
             rows={1}
             suppressHydrationWarning
-            className="w-full px-4 pt-3 pb-2 text-sm bg-transparent border-none outline-none resize-none placeholder:text-gray-400 placeholder:text-sm focus:outline-none min-h-[1.5rem] max-h-32 overflow-y-auto "
+            className="w-full px-4 pt-3 pb-2 text-sm bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground placeholder:text-sm focus:outline-none min-h-[1.5rem] max-h-32 overflow-y-auto text-foreground"
             style={{
               height: "auto",
               minHeight: "1.5rem",
@@ -101,7 +101,7 @@ export default function MessageInput({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-2 py-1 rounded-md font-medium h-7"
+                    className="flex items-center gap-1.5 text-xs text-foreground hover:text-foreground hover:bg-muted px-2 py-1 rounded-md font-medium h-7"
                   >
                     {selectedModel.name}
                     <ChevronDown className="w-3 h-3" />
@@ -114,7 +114,7 @@ export default function MessageInput({
                       onClick={() => onModelChange(model)}
                       className={
                         selectedModel.id === model.id
-                          ? "bg-gray-100 font-medium"
+                          ? "bg-muted font-medium"
                           : ""
                       }
                     >
@@ -130,7 +130,7 @@ export default function MessageInput({
                 variant="ghost"
                 size="sm"
                 disabled
-                className="flex items-center gap-1.5 text-xs text-gray-400 cursor-not-allowed px-2 py-1 rounded-md h-7"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-not-allowed px-2 py-1 rounded-md h-7"
               >
                 <Search className="w-3 h-3" />
                 Search
@@ -142,7 +142,7 @@ export default function MessageInput({
                 variant="ghost"
                 size="sm"
                 disabled
-                className="flex items-center gap-1.5 text-xs text-gray-400 cursor-not-allowed px-2 py-1 rounded-md h-7"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-not-allowed px-2 py-1 rounded-md h-7"
               >
                 <Paperclip className="w-3 h-3" />
                 Attach
@@ -153,7 +153,7 @@ export default function MessageInput({
             <Button
               type="submit"
               disabled={disabled || !input.trim()}
-              className="flex items-center gap-1.5 bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md text-xs font-medium h-7 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1 rounded-md text-xs font-medium h-7 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-3 h-3" />
               Send

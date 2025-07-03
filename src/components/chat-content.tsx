@@ -108,12 +108,12 @@ export default function ChatContent({ messages, status }: ChatContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="text-center text-gray-500"
+            className="text-center text-muted-foreground"
           >
             <div className="mb-4">
-              <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
                 <svg
-                  className="w-8 h-8 text-gray-400"
+                  className="w-8 h-8 text-muted-foreground"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -127,10 +127,10 @@ export default function ChatContent({ messages, status }: ChatContentProps) {
                 </svg>
               </div>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-gray-700">
+            <h3 className="text-xl font-semibold mb-3 text-foreground">
               Start a conversation
             </h3>
-            <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
+            <p className="text-muted-foreground max-w-md mx-auto leading-relaxed">
               Type a message below to begin your conversation. I&apos;m here to
               help with any questions you have.
             </p>
@@ -186,13 +186,13 @@ export default function ChatContent({ messages, status }: ChatContentProps) {
           >
             <div className="flex items-center space-x-1 px-2 py-3">
               {/* Three dots with no background - pure indicator */}
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
               <div
-                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
                 style={{ animationDelay: "0.15s" }}
               ></div>
               <div
-                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
                 style={{ animationDelay: "0.3s" }}
               ></div>
             </div>

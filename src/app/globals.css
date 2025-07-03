@@ -44,72 +44,78 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.45 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.25 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.55 0 0);
-  --accent: oklch(0.92 0 0);
-  --accent-foreground: oklch(0.25 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.65 0 0);
-  --chart-1: oklch(0.65 0 0);
-  --chart-2: oklch(0.55 0 0);
-  --chart-3: oklch(0.45 0 0);
-  --chart-4: oklch(0.75 0 0);
-  --chart-5: oklch(0.35 0 0);
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.45 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.96 0 0);
-  --sidebar-accent-foreground: oklch(0.25 0 0);
-  --sidebar-border: oklch(0.9 0 0);
-  --sidebar-ring: oklch(0.65 0 0);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.625rem; /* component border radius */
+  --card: oklch(1 0 0); /* card background color */
+  --card-foreground: oklch(0.145 0 0); /* text on cards */
+  --popover: oklch(1 0 0); /* popover background color */
+  --popover-foreground: oklch(0.145 0 0); /* text in popovers */
+  --primary: oklch(0.45 0 0); /* primary button color */
+  --primary-foreground: oklch(0.985 0 0); /* text on primary buttons */
+  --secondary: oklch(0.96 0 0); /* secondary button background */
+  --secondary-foreground: oklch(0.25 0 0); /* text on secondary buttons */
+  --muted: oklch(0.96 0 0); /* muted background color */
+  --muted-foreground: oklch(0.55 0 0); /* muted text color */
+  --accent: oklch(0.92 0 0); /* accent element background */
+  --accent-foreground: oklch(0.25 0 0); /* text on accent elements */
+  --destructive: oklch(0.577 0.245 27.325); /* error button color */
+  --border: oklch(0.9 0 0); /* border color */
+  --input: oklch(0.98 0 0); /* input field background */
+  --ring: oklch(0.65 0 0); /* focus ring color */
+  --chart-1: oklch(0.65 0 0); /* chart data color 1 */
+  --chart-2: oklch(0.55 0 0); /* chart data color 2 */
+  --chart-3: oklch(0.45 0 0); /* chart data color 3 */
+  --chart-4: oklch(0.75 0 0); /* chart data color 4 */
+  --chart-5: oklch(0.35 0 0); /* chart data color 5 */
+  --sidebar: oklch(0.95 0 0); /* sidebar background color */
+  --sidebar-foreground: oklch(0.145 0 0); /* sidebar text color */
+  --sidebar-primary: oklch(0.45 0 0); /* sidebar primary elements */
+  --sidebar-primary-foreground: oklch(0.985 0 0); /* text on sidebar primary */
+  --sidebar-accent: oklch(0.96 0 0); /* sidebar accent elements */
+  --sidebar-accent-foreground: oklch(0.25 0 0); /* text on sidebar accents */
+  --sidebar-border: oklch(0.9 0 0); /* sidebar border color */
+  --sidebar-ring: oklch(0.65 0 0); /* sidebar focus rings */
+  --background: oklch(1 0 0); /* main page background */
+  --foreground: oklch(0.145 0 0); /* main text color */
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.75 0 0);
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.35 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.65 0 0);
-  --chart-2: oklch(0.55 0 0);
-  --chart-3: oklch(0.45 0 0);
-  --chart-4: oklch(0.75 0 0);
-  --chart-5: oklch(0.35 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.75 0 0);
-  --sidebar-primary-foreground: oklch(0.145 0 0);
-  --sidebar-accent: oklch(0.35 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.255 0 0); /* dark main page background */
+  --foreground: oklch(0.955 0 0); /* dark main text color */
+  --card: oklch(0.205 0 0); /* dark card background */
+  --card-foreground: oklch(0.985 0 0); /* dark text on cards */
+  --popover: oklch(0.205 0 0); /* dark popover background */
+  --popover-foreground: oklch(0.985 0 0); /* dark text in popovers */
+  --primary: oklch(0.85 0 0); /* dark primary button color */
+  --primary-foreground: oklch(0.145 0 0); /* dark text on primary */
+  --secondary: oklch(0.269 0 0); /* dark secondary button background */
+  --secondary-foreground: oklch(0.985 0 0); /* dark text on secondary */
+  --muted: oklch(0.33 0 0); /* dark muted background */
+  --muted-foreground: oklch(0.708 0 0); /* dark muted text */
+  --accent: oklch(0.35 0 0); /* dark accent element background */
+  --accent-foreground: oklch(0.985 0 0); /* dark text on accents */
+  --destructive: oklch(0.704 0.191 22.216); /* dark error button color */
+  --border: oklch(1 0 0 / 10%); /* dark border color */
+  --input: oklch(
+    1 0 0 / 15%
+  ); /* dark input background (not input field for messages) */
+  --ring: oklch(0.556 0 0); /* dark focus ring */
+  --chart-1: oklch(0.65 0 0); /* dark chart color 1 */
+  --chart-2: oklch(0.55 0 0); /* dark chart color 2 */
+  --chart-3: oklch(0.45 0 0); /* dark chart color 3 */
+  --chart-4: oklch(0.75 0 0); /* dark chart color 4 */
+  --chart-5: oklch(0.35 0 0); /* dark chart color 5 */
+  --sidebar: oklch(0.205 0 0); /* dark sidebar background */
+  --sidebar-foreground: oklch(0.6 0 0); /* dark sidebar text */
+  --sidebar-primary: oklch(0.75 0 0); /* dark sidebar primary elements */
+  --sidebar-primary-foreground: oklch(
+    0.145 0 0
+  ); /* dark text on sidebar primary */
+  --sidebar-accent: oklch(0.35 0 0); /* dark sidebar accent elements */
+  --sidebar-accent-foreground: oklch(
+    0.985 0 0
+  ); /* dark text on sidebar accents */
+  --sidebar-border: oklch(1 0 0 / 10%); /* dark sidebar border */
+  --sidebar-ring: oklch(0.556 0 0); /* dark sidebar focus rings */
 }
 
 @layer base {

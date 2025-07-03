@@ -75,7 +75,7 @@ const components: Partial<Components> = {
     return (
       // @ts-expect-error - Link props don't match anchor props exactly
       <Link
-        className="text-blue-500 hover:text-blue-600 hover:underline transition-colors duration-150"
+        className="text-primary hover:text-primary/80 hover:underline transition-colors duration-150"
         target="_blank"
         rel="noreferrer"
         {...props}
@@ -147,7 +147,7 @@ const components: Partial<Components> = {
   blockquote: ({ children, ...props }) => {
     return (
       <blockquote
-        className="border-l-4 border-gray-300 pl-4 py-2 my-4 italic bg-gray-50 rounded-r"
+        className="border-l-4 border-border pl-4 py-2 my-4 italic bg-muted rounded-r"
         {...props}
       >
         {children}
@@ -155,13 +155,13 @@ const components: Partial<Components> = {
     );
   },
   hr: ({ ...props }) => {
-    return <hr className="my-6 border-gray-200" {...props} />;
+    return <hr className="my-6 border-border" {...props} />;
   },
   table: ({ children, ...props }) => {
     return (
       <div className="overflow-x-auto my-4">
         <table
-          className="min-w-full border-collapse border border-gray-200"
+          className="min-w-full border-collapse border border-border"
           {...props}
         >
           {children}
@@ -172,7 +172,7 @@ const components: Partial<Components> = {
   th: ({ children, ...props }) => {
     return (
       <th
-        className="border border-gray-200 px-3 py-2 bg-gray-100 font-semibold text-left"
+        className="border border-border px-3 py-2 bg-muted font-semibold text-left"
         {...props}
       >
         {children}
@@ -181,7 +181,7 @@ const components: Partial<Components> = {
   },
   td: ({ children, ...props }) => {
     return (
-      <td className="border border-gray-200 px-3 py-2" {...props}>
+      <td className="border border-border px-3 py-2" {...props}>
         {children}
       </td>
     );

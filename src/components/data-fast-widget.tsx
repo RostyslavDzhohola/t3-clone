@@ -4,11 +4,11 @@ export default function DataFastWidget() {
       href="https://datafa.st/share/684a2754569da665c6b838ca?realtime=1"
       target="_blank"
       rel="noopener noreferrer"
-      className="absolute top-1 right-4 z-50 w-fit h-6 p-0 m-0 overflow-hidden rounded-sm bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
+      className="absolute top-1 right-4 z-50 w-fit h-6 p-0 m-0 overflow-hidden cursor-pointer"
       title="View DataFast Analytics Dashboard"
     >
       <iframe
-        src="https://datafa.st/widgets/684a2754569da665c6b838ca/realtime?mainTextSize=10&primaryColor=%233cda10&theme=light"
+        src="https://datafa.st/widgets/684a2754569da665c6b838ca/realtime?mainTextSize=10&primaryColor=%233cda10"
         style={{
           background: "transparent",
           border: "none",

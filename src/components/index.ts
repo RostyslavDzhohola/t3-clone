@@ -12,3 +12,5 @@ export { SidebarHistoryItem } from "./sidebar-history-item";
 export { SidebarSearch } from "./sidebar-search";
 export { SidebarUserNav } from "./sidebar-user-nav";
 export { TextWrapButton } from "./text-wrap-button";
+export { ThemeProvider } from "./theme-provider";
+export { ThemeToggle } from "./theme-toggle";

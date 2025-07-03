@@ -3,14 +3,31 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { ChatUI } from "@/components";
 import WelcomeScreen from "@/components/welcome-screen";
 import MobileWarning from "@/components/mobile-warning";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { useChatNavigation } from "@/hooks";
 
 export default function Home() {
   const { user, isLoaded } = useUser();
   const [isMobile, setIsMobile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get authenticated user chats for sidebar
+  const chats = useQuery(
+    api.messages.getChats,
+    user ? { userId: user.id } : "skip"
+  );
+
+  // Use proper chat navigation
+  const { currentChatId, handleChatSelect } = useChatNavigation({
+    user,
+    chats,
+  });
 
   useEffect(() => {
     const checkIsMobile = () => {
@@ -54,6 +71,19 @@ export default function Home() {
     return <WelcomeScreen />;
   }
 
-  // Show chat interface for signed-in users
-  return <ChatUI />;
+  // Show chat interface with sidebar for signed-in users
+  return (
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <AppSidebar
+          currentChatId={currentChatId || undefined}
+          onChatSelect={handleChatSelect}
+        />
+
+        <main className="flex-1 flex flex-col">
+          <ChatUI chatId={currentChatId || undefined} />
+        </main>
+      </div>
+    </SidebarProvider>
+  );
 }

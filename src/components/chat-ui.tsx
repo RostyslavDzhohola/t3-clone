@@ -229,9 +229,11 @@ export default function ChatUI({ chatId }: ChatUIProps) {
   };
 
   return (
-    <div className="relative flex flex-col h-full bg-gray-50">
+    <div className="relative flex flex-col h-full bg-background">
       {/* Loading Overlay - Just hide content behind empty background */}
-      {!isContentReady && <div className="absolute inset-0 bg-gray-50 z-30" />}
+      {!isContentReady && (
+        <div className="absolute inset-0 bg-background z-30" />
+      )}
 
       {/* Main Content Area - Now properly scrollable */}
       <div
@@ -261,7 +263,7 @@ export default function ChatUI({ chatId }: ChatUIProps) {
           className="w-full pointer-events-auto px-1"
           style={{ maxWidth: "685px" }} // 672px = 2xl in Tailwind, but now pixel-controllable
         >
-          <div className="backdrop-blur-sm border border-gray-200/80 rounded-t-3xl shadow-xl px-3 pt-3">
+          <div className="backdrop-blur-sm border border-border/80 rounded-t-3xl shadow-xl px-3 pt-3">
             <MessageInput
               input={input}
               onInputChange={handleInputChange}
@@ -277,11 +279,11 @@ export default function ChatUI({ chatId }: ChatUIProps) {
               <div className="absolute bottom-full right-6 mb-4">
                 <button
                   onClick={() => scrollToBottom()}
-                  className="group bg-white/95 backdrop-blur-sm border border-gray-200/80 rounded-full p-3 shadow-lg hover:shadow-xl hover:bg-white transition-all duration-200 ease-out hover:scale-105"
+                  className="group bg-background/95 backdrop-blur-sm border border-border/80 rounded-full p-3 shadow-lg hover:shadow-xl hover:bg-background transition-all duration-200 ease-out hover:scale-105"
                   title="Scroll to bottom"
                 >
                   <svg
-                    className="w-4 h-4 text-gray-500 group-hover:text-gray-700 transition-colors duration-200"
+                    className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors duration-200"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
