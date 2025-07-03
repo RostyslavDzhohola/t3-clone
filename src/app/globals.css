@@ -51,8 +51,12 @@
   --popover-foreground: oklch(0.145 0 0); /* text in popovers */
   --primary: oklch(0.45 0 0); /* primary button color */
   --primary-foreground: oklch(0.985 0 0); /* text on primary buttons */
-  --secondary: oklch(0.96 0 0); /* secondary button background */
-  --secondary-foreground: oklch(0.25 0 0); /* text on secondary buttons */
+  --secondary: oklch(
+    0.99 0 0
+  ); /* secondary button background: even whiter shade of gray */
+  --secondary-foreground: oklch(
+    0.38 0 0
+  ); /* text on secondary buttons: slightly wider (lighter) gray */
   --muted: oklch(0.96 0 0); /* muted background color */
   --muted-foreground: oklch(0.55 0 0); /* muted text color */
   --accent: oklch(0.92 0 0); /* accent element background */
