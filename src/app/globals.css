@@ -132,3 +132,21 @@
     scrollbar-width: none; /* Firefox */
   }
 }
+
+/* Force toaster to top-right position */
+[data-sonner-toaster] {
+  top: 16px !important;
+  right: 16px !important;
+  bottom: auto !important;
+  left: auto !important;
+}
+
+[data-sonner-toaster][data-x-position="right"] {
+  right: 16px !important;
+  left: auto !important;
+}
+
+[data-sonner-toaster][data-y-position="top"] {
+  top: 16px !important;
+  bottom: auto !important;
+}

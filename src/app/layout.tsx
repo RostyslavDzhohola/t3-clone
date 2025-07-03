@@ -40,7 +40,7 @@ export default function RootLayout({
             <DataFastWidget />
             {children}
           </ConvexClientProvider>
-          <Toaster />
+          <Toaster position="top-right" />
         </body>
       </html>
     </ClerkProvider>
