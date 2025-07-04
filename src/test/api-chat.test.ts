@@ -14,6 +14,12 @@ vi.mock("ai", () => ({
   smoothStream: vi.fn(),
   createDataStream: vi.fn(),
   generateId: vi.fn(() => "test-stream-id"),
+  appendResponseMessages: vi.fn(),
+  tool: vi.fn(() => ({
+    description: "Mock tool",
+    parameters: {},
+    execute: vi.fn(),
+  })),
 }));
 
 vi.mock("convex/browser", () => ({
@@ -33,9 +39,15 @@ vi.mock("resumable-stream", () => ({
   })),
 }));
 
-vi.mock("next/server", () => ({
-  after: vi.fn(),
-}));
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    after: vi.fn(),
+    NextRequest: actual.NextRequest,
+    NextResponse: actual.NextResponse,
+  };
+});
 
 describe("/api/chat Route Tests", () => {
   let mockConvex: {
@@ -107,6 +119,31 @@ describe("/api/chat Route Tests", () => {
       };
 
       const mockFinishResult = {
+        response: {
+          messages: [
+            {
+              id: "assistant-msg-1",
+              role: "assistant",
+              content: "Here are your todos:",
+              parts: [
+                { type: "text", text: "Here are your todos:" },
+              ],
+            },
+            {
+              id: "tool-msg-1", 
+              role: "tool",
+              content: "",
+              parts: [
+                {
+                  type: "tool-result",
+                  toolCallId: "tool-call-123",
+                  toolName: "getTodos",
+                  result: mockToolResult.result,
+                },
+              ],
+            },
+          ],
+        },
         toolCalls: [mockToolCall],
         toolResults: [mockToolResult],
         text: "Here are your todos:",
@@ -114,8 +151,7 @@ describe("/api/chat Route Tests", () => {
 
       // Mock Convex responses
       mockConvex.query.mockResolvedValue(previousMessages);
-      const saveMessageMock = vi.fn().mockResolvedValue("saved-msg-id");
-      mockConvex.mutation.mockImplementation(saveMessageMock);
+      mockConvex.mutation.mockResolvedValue("saved-msg-id");
 
       // Mock streamText
       const mockResult = {
@@ -130,12 +166,44 @@ describe("/api/chat Route Tests", () => {
         }
       );
 
-      // Mock other AI functions
-      const { convertToCoreMessages, appendClientMessage } = await import("ai");
-      (convertToCoreMessages as ReturnType<typeof vi.fn>).mockReturnValue([]);
-      (appendClientMessage as ReturnType<typeof vi.fn>).mockReturnValue([
-        testMessage,
-      ]);
+      // Mock other AI functions using the existing mocks
+      vi.doMock("ai", () => ({
+        streamText: mockStreamText,
+        convertToCoreMessages: vi.fn().mockReturnValue([]),
+        appendClientMessage: vi.fn().mockReturnValue([testMessage]),
+        appendResponseMessages: vi.fn().mockReturnValue([
+          // Original user message
+          testMessage,
+          // AI response messages
+          {
+            id: "assistant-msg-1",
+            role: "assistant",
+            content: "Here are your todos:",
+            parts: [{ type: "text", text: "Here are your todos:" }],
+          },
+          {
+            id: "tool-msg-1",
+            role: "tool", 
+            content: "",
+            parts: [
+              {
+                type: "tool-result",
+                toolCallId: "tool-call-123",
+                toolName: "getTodos",
+                result: mockToolResult.result,
+              },
+            ],
+          },
+        ]),
+        smoothStream: vi.fn(),
+        createDataStream: vi.fn(),
+        generateId: vi.fn(() => "test-stream-id"),
+        tool: vi.fn(() => ({
+          description: "Mock tool",
+          parameters: {},
+          execute: vi.fn(),
+        })),
+      }));
 
       // Create request
       const request = new NextRequest("http://localhost:3000/api/chat", {
@@ -161,7 +229,7 @@ describe("/api/chat Route Tests", () => {
       );
 
       // Verify user message was saved
-      expect(saveMessageMock).toHaveBeenCalledWith(
+      expect(mockConvex.mutation).toHaveBeenCalledWith(
         expect.any(Object), // api.messages.saveMessage
         {
           chatId: testChatId,
@@ -171,35 +239,42 @@ describe("/api/chat Route Tests", () => {
         }
       );
 
-      // Verify tool call was saved
-      expect(saveMessageMock).toHaveBeenCalledWith(expect.any(Object), {
-        chatId: testChatId,
-        userId: "test-user-id",
-        role: "assistant",
-        body: "Calling getTodos",
-        toolCallId: "tool-call-123",
-        toolName: "getTodos",
-        toolArgs: { completed: false },
-      });
+      // Verify assistant message was saved (without parts)
+      expect(mockConvex.mutation).toHaveBeenCalledWith(
+        expect.any(Object), // api.messages.saveRichMessage
+        {
+          chatId: testChatId,
+          userId: "test-user-id",
+          message: {
+            id: "assistant-msg-1",
+            role: "assistant",
+            content: "Here are your todos:",
+            parts: undefined, // Assistant messages should not have parts
+          },
+        }
+      );
 
-      // Verify tool result was saved
-      expect(saveMessageMock).toHaveBeenCalledWith(expect.any(Object), {
-        chatId: testChatId,
-        userId: "test-user-id",
-        role: "tool",
-        body: "Result for getTodos",
-        toolCallId: "tool-call-123",
-        toolName: "getTodos",
-        toolResult: mockToolResult.result,
-      });
-
-      // Verify final response was saved
-      expect(saveMessageMock).toHaveBeenCalledWith(expect.any(Object), {
-        chatId: testChatId,
-        userId: "test-user-id",
-        role: "assistant",
-        body: "Here are your todos:",
-      });
+      // Verify tool message was saved (with parts)
+      expect(mockConvex.mutation).toHaveBeenCalledWith(
+        expect.any(Object), // api.messages.saveRichMessage
+        {
+          chatId: testChatId,
+          userId: "test-user-id",
+          message: {
+            id: "tool-msg-1",
+            role: "tool",
+            content: "",
+            parts: [
+              {
+                type: "tool-result",
+                toolCallId: "tool-call-123",
+                toolName: "getTodos",
+                result: mockToolResult.result,
+              },
+            ], // Tool messages should have parts
+          },
+        }
+      );
 
       // Verify stream was registered
       expect(mockConvex.mutation).toHaveBeenCalledWith(

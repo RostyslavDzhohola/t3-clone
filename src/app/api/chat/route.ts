@@ -231,29 +231,30 @@ export async function POST(req: Request) {
 
                   for (const message of newMessages) {
                     // Save user, assistant, and tool messages
+                    const messageRole = message.role as "user" | "assistant" | "tool";
                     if (
-                      message.role === "user" ||
-                      message.role === "assistant" ||
-                      message.role === "tool"
+                      messageRole === "user" ||
+                      messageRole === "assistant" ||
+                      messageRole === "tool"
                     ) {
                       await convex.mutation(api.messages.saveRichMessage, {
                         chatId: chatId as Id<"chats">,
                         userId: authUserId,
                         message: {
                           id: message.id,
-                          role: message.role,
+                          role: messageRole,
                           content:
                             typeof message.content === "string"
                               ? message.content
                               : "",
                           // Only save parts for tool messages, not for assistant messages
-                          parts: message.role === "tool" ? (message.parts ?? undefined) : undefined,
+                          parts: messageRole === "tool" ? (message.parts ?? undefined) : undefined,
                         },
                       });
 
                       console.log("✅ [SERVER] Saved response message", {
-                        role: message.role,
-                        hasParts: message.role === "tool" ? !!(message.parts?.length) : false,
+                        role: messageRole,
+                        hasParts: messageRole === "tool" ? !!(message.parts?.length) : false,
                       });
                     }
                   }
