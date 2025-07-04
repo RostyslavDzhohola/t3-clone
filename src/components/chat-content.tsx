@@ -84,7 +84,8 @@ export default function ChatContent({ messages, status }: ChatContentProps) {
     return (
       <div
         ref={contentRef}
-        className="w-full max-w-3xl mx-auto px-4 py-8 pb-32"
+        className="w-full mx-auto px-4 py-8 pb-32"
+        style={{ maxWidth: "770px" }}
       >
         {/* Empty div to maintain layout while waiting */}
         <div className="flex items-center justify-center h-[60vh]">
@@ -97,9 +98,11 @@ export default function ChatContent({ messages, status }: ChatContentProps) {
   if (messages.length === 0 && showWelcome) {
     return (
       // Outer container: centers the welcome screen horizontally with max width and padding
+      // This is for controlling the width of the chat UI.
       <div
         ref={contentRef}
-        className="w-full max-w-3xl mx-auto px-4 py-8 pb-32"
+        className="w-full mx-auto px-4 py-8 pb-32"
+        style={{ maxWidth: "770px" }}
       >
         {/* Inner container: vertically and horizontally centers the welcome
         content within 60% of viewport height */}
@@ -151,7 +154,7 @@ export default function ChatContent({ messages, status }: ChatContentProps) {
           ? "pb-32" // Only reset to normal padding if THIS message was long
           : "pb-[80vh]" // Default to extended padding for all other cases
       }`}
-      style={{ maxWidth: "var(--chat-content-max-width, 710px)" }}
+      style={{ maxWidth: "var(--chat-content-max-width, 770px)" }}
     >
       <div className="space-y-2">
         {/* Render all messages - this enables smooth streaming! */}

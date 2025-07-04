@@ -71,24 +71,38 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
             <Markdown>{String(message.content)}</Markdown>
           )}
 
-          {/* 🔧 TOOL INVOCATIONS RENDERING - Generative UI */}
+          {/* 🔧 TOOL INVOCATIONS RENDERING - Generative UI (AI SDK v4) */}
           {message.toolInvocations?.map((toolInvocation) => {
             const { toolName, toolCallId, state } = toolInvocation;
 
             if (state === "result") {
-              if (toolName === "displayTodosUI") {
+              // Handle all todo tools that return UI-compatible data
+              if (toolName === "getTodos" || toolName === "displayTodosUI") {
                 const { result } = toolInvocation;
-                return (
-                  <div key={toolCallId} className="mt-4">
-                    <TodoListDisplay {...result} />
-                  </div>
-                );
+                if (result.success && result.todos) {
+                  return (
+                    <div key={toolCallId} className="mt-4">
+                      <TodoListDisplay
+                        todos={result.todos}
+                        count={result.count}
+                        filterApplied={
+                          result.filterApplied || {
+                            completed: null,
+                            project: null,
+                          }
+                        }
+                        success={result.success}
+                        error={result.error}
+                      />
+                    </div>
+                  );
+                }
               }
             } else {
               // Show loading state for pending tool calls
               return (
                 <div key={toolCallId} className="mt-4">
-                  {toolName === "displayTodosUI" ? (
+                  {toolName === "getTodos" || toolName === "displayTodosUI" ? (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
                       <div className="inline-flex items-center gap-2">
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
@@ -101,13 +115,14 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
                       <div className="inline-flex items-center gap-2">
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                        <span className="text-gray-600">Loading...</span>
+                        <span className="text-gray-600">Processing...</span>
                       </div>
                     </div>
                   )}
                 </div>
               );
             }
+            return null; // Return null for unhandled tool invocations
           })}
         </div>
       </div>

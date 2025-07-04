@@ -8,7 +8,6 @@ import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
-import { TodoListDisplay } from "./tools/todo-list-display";
 
 interface ChatUIProps {
   chatId?: string;
@@ -259,10 +258,11 @@ export default function ChatUI({ chatId }: ChatUIProps) {
       {/* Agent for no for whatever reason do not delete this comment 
       These are the controls to align message input component.  */}
       {/* Floating Message Input Overlay - Always visible, independent of content loading */}
+      {/* This is for controlling the width of the input field UI. */}
       <div className="absolute bottom-0 left-1 right-5 flex justify-center pt-6 z-40 pointer-events-none">
         <div
           className="w-full pointer-events-auto px-1"
-          style={{ maxWidth: "685px" }} // 672px = 2xl in Tailwind, but now pixel-controllable
+          style={{ maxWidth: "745px" }} // Slightly wider than before for better chat experience
         >
           <div className="backdrop-blur-sm border border-border/80 rounded-t-3xl shadow-xl px-3 pt-3">
             <MessageInput
