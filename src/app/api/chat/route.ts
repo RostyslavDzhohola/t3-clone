@@ -261,8 +261,8 @@ export async function POST(req: Request) {
                             typeof message.content === "string"
                               ? message.content
                               : "",
-                          // Only save parts for tool messages, not for assistant messages
-                          parts: messageRole === "tool" ? (message.parts ?? undefined) : undefined,
+                          // Persist parts for ANY message that includes them (assistant/tool)
+                          parts: message.parts && message.parts.length > 0 ? message.parts : undefined,
                         },
                       });
 
