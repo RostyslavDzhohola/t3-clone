@@ -37,7 +37,7 @@ const streamContext = createResumableStreamContext({
 const todoTools = {
   createTodo: tool({
     description:
-      "Create a new to-do item for the user. Extract the task description directly from what the user wants to add to their todo list.",
+      "Create a new to-do item for the user. Extract the task description directly from what the user wants to add to their todo list. After successfully creating, consider calling getTodos to show the user their updated list including the new item.",
     parameters: z.object({
       description: z
         .string()
@@ -120,9 +120,13 @@ const todoTools = {
 
   updateTodo: tool({
     description:
-      "Update an existing to-do item's properties (description, project, tags, priority, or due date). Always show the user the current to-do list after making updates so they can see the changes.",
+      "Update an existing to-do item's properties (description, project, tags, priority, or due date). CRITICAL: When a user wants to update a to-do item but doesn't provide the exact ID, you must first call getTodos to retrieve the current list, then semantically match the to-do item they're referring to, and use the exact 'id' field from that response. Never ask the user for the ID - find it yourself by matching their description to the existing to-do items. After successfully updating, call getTodos again to show the user the updated list so they can see the changes.",
     parameters: z.object({
-      todoId: z.string().describe("The ID of the to-do item to update"),
+      todoId: z
+        .string()
+        .describe(
+          "The exact database ID from getTodos response (e.g., 'j97abc123xyz') - NOT a simple number. If you don't have this, call getTodos first to find the matching item."
+        ),
       description: z.string().optional().describe("New task description"),
       project: z.string().optional().describe("New project name"),
       tags: z.array(z.string()).optional().describe("New tags array"),
@@ -200,7 +204,7 @@ const todoTools = {
 
   getTodos: tool({
     description:
-      "Get the user's to-do list, optionally filtered by completion status or project",
+      "Get the user's to-do list, optionally filtered by completion status or project. CRITICAL: Always check this tool for the latest updates instead of relying on chat message history. When displaying results, use these formatting guidelines:\n\n**Default Display:** Always use the Simplified View unless the user specifically requests the Complete View.\n\n**For Simplified View:**\n- Use markdown list formatting (with dashes)\n- Format each item as: - [Status Emoji] Description\n- Status: ✅ (completed) or 🔴 (not completed)\n- Do NOT show IDs in simplified view\n- Example: - 🔴 Fix the login bug\n\n**For Complete View:**\n- Format description as h3 heading with status emoji: ### [Status Emoji] Description\n- Below the heading, display details in bullet list format:\n  - Project: [project name]\n  - Tags: [tag1, tag2, ...]\n  - Priority: [priority level]\n  - Due Date: [date with urgency emoji]\n  - ID: [todo ID]\n- Due Date Urgency: ⚠️ (overdue), 🔥 (due today), ⏰ (due soon), 📅 (future due date)\n- Group by project or priority when helpful\n\nAlways format lists in a clean, readable manner with proper line breaks between items.",
     parameters: z.object({
       completed: z
         .boolean()
@@ -269,7 +273,7 @@ const todoTools = {
 
   toggleTodo: tool({
     description:
-      "Mark a to-do item as complete or incomplete. CRITICAL: You must first call getTodos to retrieve the current list and use the exact 'id' field from that response. Never guess or use simple numbers as todoId.",
+      "Mark a to-do item as complete or incomplete. CRITICAL: You must first call getTodos to retrieve the current list and use the exact 'id' field from that response. Never guess or use simple numbers as todoId. After successfully toggling, call getTodos again to show the user the updated list so they can see the changes.",
     parameters: z.object({
       todoId: z
         .string()
@@ -316,9 +320,14 @@ const todoTools = {
   }),
 
   deleteTodo: tool({
-    description: "Delete a to-do item permanently",
+    description:
+      "Delete a to-do item permanently. CRITICAL: When a user wants to delete a to-do item but doesn't provide the exact ID, you must first call getTodos to retrieve the current list, then semantically match the to-do item they're referring to, and use the exact 'id' field from that response. Never ask the user for the ID - find it yourself by matching their description to the existing to-do items. After successfully deleting, call getTodos again to show the user the updated list so they can confirm the deletion.",
     parameters: z.object({
-      todoId: z.string().describe("The ID of the to-do item to delete"),
+      todoId: z
+        .string()
+        .describe(
+          "The exact database ID from getTodos response (e.g., 'j97abc123xyz') - NOT a simple number. If you don't have this, call getTodos first to find the matching item."
+        ),
     }),
     execute: async ({ todoId }) => {
       try {
@@ -578,7 +587,7 @@ export async function POST(req: Request) {
             model: openrouter(modelId),
             messages: messagesToSend,
             system:
-              "You are an AI assistant application with powerful to-do management capabilities. You help users by providing clear, accurate, and helpful responses to their questions across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Additionally, you have access to comprehensive to-do management tools that allow you to help users organize their tasks, projects, and goals. You can create, view, update, complete, and delete to-do items, as well as organize them by projects and tags. When users mention tasks, to-dos, reminders, or things they need to do, proactively offer to help them manage these items. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information. When a user requests their current to-do list, always check a tool for the latest updates instead of relying on the chat messages in the conversation history.\n\nWhen displaying to-do lists, use these formatting guidelines:\n\n**Default Display:** Always use the Simplified View unless the user specifically requests the Complete View.\n\n**For Simplified View:**\n- Use markdown list formatting (with dashes)\n- Format each item as: - [Status Emoji] Description\n- Status: ✅ (completed) or 🔴 (not completed)\n- Do NOT show IDs in simplified view\n- Example: - 🔴 Fix the login bug\n\n**For Complete View:**\n- Format description as h3 heading with status emoji: ### [Status Emoji] Description\n- Below the heading, display details in bullet list format:\n  - Project: [project name]\n  - Tags: [tag1, tag2, ...]\n  - Priority: [priority level]\n  - Due Date: [date with urgency emoji]\n  - ID: [todo ID]\n- Due Date Urgency: ⚠️ (overdue), 🔥 (due today), ⏰ (due soon), 📅 (future due date)\n- Group by project or priority when helpful\n\nAlways format lists in a clean, readable manner with proper line breaks between items.",
+              "You are an AI assistant with powerful to-do management capabilities. You help users by providing clear, accurate, and helpful responses across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Additionally, you have access to comprehensive to-do management tools. When users mention tasks, to-dos, reminders, or things they need to do, proactively offer to help them manage these items. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
             temperature: 0.7,
             // 🛠️ Add to-do management tools for authenticated users
             tools: todoTools,
