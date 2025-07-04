@@ -567,34 +567,6 @@ describe("/api/chat Route Tests", () => {
         content: "Show me todos and create a new one",
       };
 
-      const mockFinishResult = {
-        toolCalls: [
-          {
-            toolCallId: "tool-call-1",
-            toolName: "getTodos",
-            args: {},
-          },
-          {
-            toolCallId: "tool-call-2",
-            toolName: "createTodo",
-            args: { description: "New task" },
-          },
-        ],
-        toolResults: [
-          {
-            toolCallId: "tool-call-1",
-            toolName: "getTodos",
-            result: { success: true, todos: [], count: 0 },
-          },
-          {
-            toolCallId: "tool-call-2",
-            toolName: "createTodo",
-            result: { success: true, id: "new-todo-id" },
-          },
-        ],
-        text: "I've shown your todos and created a new one.",
-      };
-
       // Simplified test - just verify the API doesn't crash with multiple tool calls
       const request = new NextRequest("http://localhost:3000/api/chat", {
         method: "POST",
@@ -615,17 +587,7 @@ describe("/api/chat Route Tests", () => {
 
     it("should handle tool calls without results", async () => {
       // Test case where tool calls are made but no results are returned
-      const mockFinishResult = {
-        toolCalls: [
-          {
-            toolCallId: "tool-call-1",
-            toolName: "getTodos",
-            args: {},
-          },
-        ],
-        toolResults: [], // No results
-        text: "I'll get your todos.",
-      };
+      // Simplified test - just verify basic functionality
 
       const request = new NextRequest("http://localhost:3000/api/chat", {
         method: "POST",

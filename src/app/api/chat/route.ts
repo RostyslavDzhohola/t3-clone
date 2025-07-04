@@ -21,7 +21,16 @@ import { tools } from "@/ai/tools";
 import { after } from "next/server";
 
 // Initialize Convex client for server-side usage
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+function getConvexClient(): ConvexHttpClient {
+  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+    // During build time, return a mock client to avoid errors
+    return {
+      mutation: () => Promise.resolve(),
+      query: () => Promise.resolve([]),
+    } as unknown as ConvexHttpClient;
+  }
+  return new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+}
 
 // appendResponseMessages is for saving the message with tool calls as parts
 const openrouter = createOpenRouter({
@@ -34,6 +43,11 @@ const streamContext = createResumableStreamContext({
 });
 
 export async function POST(req: Request) {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_CONVEX_URL) {
+    return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+  }
+  
   try {
     // Parse and validate request body
     let newUserMessage: Message | undefined;
@@ -70,7 +84,7 @@ export async function POST(req: Request) {
     if (authUserId && chatId && newUserMessage) {
       // 🔥 CRITICAL: Save user message FIRST, before any other operations
       try {
-        await convex.mutation(api.messages.saveMessage, {
+        await getConvexClient().mutation(api.messages.saveMessage, {
           chatId: chatId as Id<"chats">,
           userId: authUserId,
           role: "user",
@@ -88,7 +102,7 @@ export async function POST(req: Request) {
           chatId
         );
 
-        const previousMessages = await convex.query(api.messages.getMessages, {
+        const previousMessages = await getConvexClient().query(api.messages.getMessages, {
           chatId: chatId as Id<"chats">,
         });
 
@@ -99,7 +113,7 @@ export async function POST(req: Request) {
         );
 
         // Convert Convex messages to Message format with tool calls
-        const previousUIMessages: Message[] = previousMessages.map((msg) => ({
+        const previousUIMessages: Message[] = previousMessages.map((msg: { _id: string; role: string; body: string; _creationTime: number }) => ({
           id: msg._id, // Use Convex system ID
           role: msg.role as "user" | "assistant",
           content: msg.body,
@@ -173,7 +187,7 @@ export async function POST(req: Request) {
       const streamId = generateId();
 
       // Record this new stream so we can resume later
-      await convex.mutation(api.messages.appendStreamId, {
+      await getConvexClient().mutation(api.messages.appendStreamId, {
         chatId: chatId as Id<"chats">,
         streamId,
         userId: authUserId,
@@ -237,7 +251,7 @@ export async function POST(req: Request) {
                       messageRole === "assistant" ||
                       messageRole === "tool"
                     ) {
-                      await convex.mutation(api.messages.saveRichMessage, {
+                      await getConvexClient().mutation(api.messages.saveRichMessage, {
                         chatId: chatId as Id<"chats">,
                         userId: authUserId,
                         message: {
@@ -299,6 +313,11 @@ export async function POST(req: Request) {
  * GET handler for resuming chat streams
  */
 export async function GET(request: Request) {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_CONVEX_URL) {
+    return new Response("Service unavailable", { status: 503 });
+  }
+  
   try {
     const { searchParams } = new URL(request.url);
     const chatId = searchParams.get("chatId");
@@ -316,7 +335,7 @@ export async function GET(request: Request) {
     }
 
     // Load stream IDs for this chat
-    const streamIds = await convex.query(api.messages.loadStreams, {
+    const streamIds = await getConvexClient().query(api.messages.loadStreams, {
       chatId: chatId as Id<"chats">,
     });
 
@@ -354,7 +373,7 @@ export async function GET(request: Request) {
      */
     console.log("🔚 [SERVER] Stream has concluded, loading last message");
 
-    const messages = await convex.query(api.messages.getMessages, {
+    const messages = await getConvexClient().query(api.messages.getMessages, {
       chatId: chatId as Id<"chats">,
     });
 
