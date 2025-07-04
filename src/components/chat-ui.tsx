@@ -8,6 +8,7 @@ import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import ChatContent from "./chat-content";
 import MessageInput from "./message-input";
+import { TodoListDisplay } from "./tools/todo-list-display";
 
 interface ChatUIProps {
   chatId?: string;

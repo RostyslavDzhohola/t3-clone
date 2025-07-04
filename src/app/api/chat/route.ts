@@ -20,6 +20,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { createResumableStreamContext } from "resumable-stream";
 import { after } from "next/server";
 import { z } from "zod";
+import { tools as aiTools } from "@/ai/tools";
 
 // Initialize Convex client for server-side usage
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -587,10 +588,10 @@ export async function POST(req: Request) {
             model: openrouter(modelId),
             messages: messagesToSend,
             system:
-              "You are an AI assistant with powerful to-do management capabilities. You help users by providing clear, accurate, and helpful responses across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Additionally, you have access to comprehensive to-do management tools. When users mention tasks, to-dos, reminders, or things they need to do, proactively offer to help them manage these items. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
+              "You are an AI assistant with powerful to-do management capabilities and generative UI features. You help users by providing clear, accurate, and helpful responses across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Additionally, you have access to comprehensive to-do management tools that can both manage tasks and display them in beautiful, interactive user interfaces. When users mention tasks, to-dos, reminders, or things they need to do, proactively offer to help them manage these items. When users want to view their todos, use the displayTodosUI tool to show them in a beautiful table format with all details like priority, due dates, projects, and tags. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
             temperature: 0.7,
-            // 🛠️ Add to-do management tools for authenticated users
-            tools: todoTools,
+            // 🛠️ Add to-do management tools and generative UI tools for authenticated users
+            tools: { ...todoTools, ...aiTools },
             maxSteps: 5, // Allow multiple tool calls in sequence
             // 🔥 ADD SMOOTH STREAMING for better UI rendering
             experimental_transform: smoothStream({
