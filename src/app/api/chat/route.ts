@@ -280,6 +280,59 @@ export async function POST(req: Request) {
                   console.log(
                     "⚠️ [SERVER] No response.messages found in finishResult"
                   );
+
+                  // 📦 Handle toolResults when response.messages is absent (tool call scenario)
+                  if (finishResult.toolResults && finishResult.toolResults.length > 0) {
+                    console.log(
+                      `🔧 [SERVER] Persisting ${finishResult.toolResults.length} toolResults`
+                    );
+
+                    // 1. Save each tool result as its own tool message
+                    for (const toolResult of finishResult.toolResults) {
+                      const toolMessageId = generateId();
+
+                      await getConvexClient().mutation(api.messages.saveRichMessage, {
+                        chatId: chatId as Id<"chats">,
+                        userId: authUserId,
+                        message: {
+                          id: toolMessageId,
+                          role: "tool",
+                          content: "", // Tool messages store data in parts, not body
+                          parts: [
+                            {
+                              type: "tool-result",
+                              toolCallId: toolResult.toolCallId,
+                              toolName: toolResult.toolName,
+                              result: toolResult.result,
+                            },
+                          ],
+                        },
+                      });
+
+                      console.log("✅ [SERVER] Saved tool message", {
+                        toolName: toolResult.toolName,
+                        toolCallId: toolResult.toolCallId,
+                      });
+                    }
+
+                    // 2. Persist the assistant's synthesized text, if provided
+                    if (finishResult.text && finishResult.text.length > 0) {
+                      const assistantMsgId = generateId();
+
+                      await getConvexClient().mutation(api.messages.saveRichMessage, {
+                        chatId: chatId as Id<"chats">,
+                        userId: authUserId,
+                        message: {
+                          id: assistantMsgId,
+                          role: "assistant",
+                          content: finishResult.text,
+                          parts: undefined,
+                        },
+                      });
+
+                      console.log("✅ [SERVER] Saved assistant message after tool calls");
+                    }
+                  }
                 }
               } catch (error) {
                 console.error(
