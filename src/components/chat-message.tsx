@@ -71,120 +71,6 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
             <Markdown>{String(message.content)}</Markdown>
           )}
 
-          {/* 🛠️ TOOL INVOCATION DETAILS - Show behind-the-scenes tool execution */}
-          {message.parts?.map((part, index) => {
-            // Show tool call details (what the model is thinking)
-            if (part.type === "tool-invocation" && "toolInvocation" in part) {
-              const { toolInvocation } = part;
-              const { toolName, state } = toolInvocation;
-
-              const partKey = `invocation-${index}-${toolName}`;
-
-              return (
-                <div key={partKey} className="mt-4">
-                  <ToolInvocationDisplay
-                    toolName={toolName}
-                    args={toolInvocation.args}
-                    state={state === "result" ? "result" : "call"}
-                    result={
-                      state === "result" ? toolInvocation.result : undefined
-                    }
-                    timestamp={new Date()}
-                  />
-                </div>
-              );
-            }
-            return null;
-          })}
-
-          {/* 🔧 TOOL INVOCATIONS RENDERING - Using new parts pattern (AI SDK v4.2+) */}
-          {message.parts?.map((part, index) => {
-            // Check if this part is a tool invocation
-            if (part.type === "tool-invocation" && "toolInvocation" in part) {
-              const { toolInvocation } = part;
-              const { toolName, state } = toolInvocation;
-
-              // Generate a unique key using the part index and tool name
-              const partKey = `${index}-${toolName}`;
-
-              if (state === "result") {
-                // 🛠️ Show tool invocation result details first
-                const toolInvocationElement = (
-                  <ToolInvocationDisplay
-                    toolName={toolName}
-                    args={toolInvocation.args}
-                    state="result"
-                    result={toolInvocation.result}
-                    timestamp={new Date()}
-                  />
-                );
-
-                // Handle all todo tools that return UI-compatible data
-                if (toolName === "getTodos" || toolName === "displayTodosUI") {
-                  const { result } = toolInvocation;
-                  if (result.success && result.todos) {
-                    return (
-                      <div key={partKey} className="space-y-4 mt-4">
-                        {toolInvocationElement}
-                        <TodoListDisplay
-                          todos={result.todos}
-                          count={result.count}
-                          filterApplied={
-                            result.filterApplied || {
-                              completed: null,
-                              project: null,
-                            }
-                          }
-                          success={result.success}
-                          error={result.error}
-                        />
-                      </div>
-                    );
-                  } else {
-                    // Just show tool invocation if no UI data
-                    return (
-                      <div key={partKey} className="mt-4">
-                        {toolInvocationElement}
-                      </div>
-                    );
-                  }
-                } else {
-                  // For non-UI tools, just show the tool invocation
-                  return (
-                    <div key={partKey} className="mt-4">
-                      {toolInvocationElement}
-                    </div>
-                  );
-                }
-              } else {
-                // Show loading state for pending tool calls
-                return (
-                  <div key={partKey} className="mt-4">
-                    {toolName === "getTodos" ||
-                    toolName === "displayTodosUI" ? (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                        <div className="inline-flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                          <span className="text-gray-600">
-                            Loading your todos...
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                        <div className="inline-flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                          <span className="text-gray-600">Processing...</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-            }
-            return null; // Return null for non-tool-invocation parts
-          })}
-
           {/* 🎯 CRITICAL: Handle stored parts pattern - for loaded messages from database */}
           {/* This handles messages loaded from the database that have parts stored */}
           {(
@@ -216,6 +102,126 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
               }>;
             }
           ).parts?.map((part, index: number) => {
+            // Handle 'tool-invocation' parts, which contain the full tool call and result state.
+            if (part.type === "tool-invocation") {
+              const { toolInvocation } = part as unknown as {
+                toolInvocation: {
+                  toolCallId: string;
+                  toolName: string;
+                  args: Record<string, unknown>;
+                  state: "call" | "result";
+                  result?: Record<string, unknown>;
+                };
+              };
+
+              const { toolName, state, toolCallId, args, result } =
+                toolInvocation;
+              const invocationKey = `invocation-${
+                toolCallId || index
+              }-${toolName}`;
+
+              // RENDER RESULT: If the tool call has a result, display it.
+              if (state === "result") {
+                const toolInvocationElement = (
+                  <ToolInvocationDisplay
+                    toolName={toolName}
+                    args={args}
+                    state="result"
+                    result={result}
+                    timestamp={message.createdAt || new Date()}
+                  />
+                );
+
+                // GENERATIVE UI: If the tool is UI-related, render its specific component.
+                if (toolName === "getTodos" || toolName === "displayTodosUI") {
+                  if (
+                    result &&
+                    typeof result === "object" &&
+                    "success" in result &&
+                    result.success &&
+                    "todos" in result &&
+                    Array.isArray(result.todos)
+                  ) {
+                    return (
+                      <div key={invocationKey} className="space-y-4 mt-4">
+                        {toolInvocationElement}
+                        <TodoListDisplay
+                          todos={result.todos}
+                          count={
+                            typeof result.count === "number" ? result.count : 0
+                          }
+                          filterApplied={
+                            (result.filterApplied &&
+                            typeof result.filterApplied === "object"
+                              ? result.filterApplied
+                              : {
+                                  completed: null,
+                                  project: null,
+                                }) as {
+                              completed: boolean | null;
+                              project: string | null;
+                            }
+                          }
+                          success={Boolean(result.success)}
+                          error={
+                            typeof result.error === "string"
+                              ? result.error
+                              : undefined
+                          }
+                        />
+                      </div>
+                    );
+                  }
+                }
+                // For non-UI tools or tools with failed results, just show the invocation.
+                return (
+                  <div key={invocationKey} className="mt-4">
+                    {toolInvocationElement}
+                  </div>
+                );
+              }
+              // RENDER PENDING: If the tool call is pending, show a loading state.
+              else if (state === "call") {
+                return (
+                  <div key={invocationKey} className="mt-4">
+                    {toolName === "getTodos" ||
+                    toolName === "displayTodosUI" ? (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                        <div className="inline-flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                          <span className="text-gray-600">
+                            Loading your todos...
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <ToolInvocationDisplay
+                        toolName={toolName}
+                        args={args}
+                        state="call"
+                        timestamp={message.createdAt}
+                      />
+                    )}
+                  </div>
+                );
+              }
+            }
+
+            // Handle step-related parts (new AI SDK format)
+            if (
+              part.type === "step-start" ||
+              part.type === "step-finish" ||
+              part.type === "step-result"
+            ) {
+              // For now, we'll just ignore these step parts as they're internal to the AI processing
+              // They don't need to be rendered in the UI
+              return null;
+            }
+
+            // LEGACY: The following blocks are for backwards compatibility with the old
+            // 'tool-call' and 'tool-result' part types. This can be removed once
+            // all database messages are migrated to the new `tool-invocation` format.
+
             // 🛠️ Show stored tool call details first
             if (part.type === "tool-call") {
               const { toolName, args, toolCallId } = part;
@@ -260,21 +266,40 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
 
               // Handle all todo tools that return UI-compatible data
               if (toolName === "getTodos" || toolName === "displayTodosUI") {
-                if (result && result.success && result.todos) {
+                if (
+                  result &&
+                  typeof result === "object" &&
+                  "success" in result &&
+                  result.success &&
+                  "todos" in result &&
+                  Array.isArray(result.todos)
+                ) {
                   return (
                     <div key={partKey} className="space-y-4 mt-4">
                       {toolInvocationElement}
                       <TodoListDisplay
                         todos={result.todos}
-                        count={result.count || 0}
+                        count={
+                          typeof result.count === "number" ? result.count : 0
+                        }
                         filterApplied={
-                          result.filterApplied || {
-                            completed: null,
-                            project: null,
+                          (result.filterApplied &&
+                          typeof result.filterApplied === "object"
+                            ? result.filterApplied
+                            : {
+                                completed: null,
+                                project: null,
+                              }) as {
+                            completed: boolean | null;
+                            project: string | null;
                           }
                         }
-                        success={result.success || false}
-                        error={result.error}
+                        success={Boolean(result.success)}
+                        error={
+                          typeof result.error === "string"
+                            ? result.error
+                            : undefined
+                        }
                       />
                     </div>
                   );

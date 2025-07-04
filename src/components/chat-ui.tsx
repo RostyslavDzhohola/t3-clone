@@ -178,12 +178,32 @@ export default function ChatUI({ chatId }: ChatUIProps) {
 
   // Update messages when Convex data changes
   useEffect(() => {
+    console.log("🔄 [UI] Effect triggered - updating messages:", {
+      hasUser: !!user,
+      convertedMessagesLength: convertedMessages.length,
+      chatId,
+    });
+
     if (user && convertedMessages.length >= 0) {
+      console.log("📝 [UI] Setting messages in useChat:", {
+        messageCount: convertedMessages.length,
+        messagesWithParts: convertedMessages.filter((m) => m.parts?.length)
+          .length,
+        summary: convertedMessages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          hasContent: !!msg.content,
+          hasParts: !!msg.parts?.length,
+          partsCount: msg.parts?.length || 0,
+          partTypes: msg.parts?.map((p) => p.type) || [],
+        })),
+      });
+
       setMessages(convertedMessages);
       // Wait for content to be properly loaded and positioned
       waitForContentAndReveal(convertedMessages.length);
     }
-  }, [user, convertedMessages, setMessages, waitForContentAndReveal]);
+  }, [user, convertedMessages, setMessages, waitForContentAndReveal, chatId]);
 
   // Set up Intersection Observer for scroll anchor
   useEffect(() => {

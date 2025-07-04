@@ -26,13 +26,21 @@ export default defineSchema({
           type: v.union(
             v.literal("text"),
             v.literal("tool-call"),
-            v.literal("tool-result")
+            v.literal("tool-result"),
+            v.literal("tool-invocation"),
+            v.literal("step-start"),
+            v.literal("step-finish"),
+            v.literal("step-result")
           ),
           text: v.optional(v.string()),
           toolCallId: v.optional(v.string()),
           toolName: v.optional(v.string()),
           args: v.optional(v.any()),
           result: v.optional(v.any()),
+          // Additional fields for new part types
+          toolInvocation: v.optional(v.any()),
+          stepType: v.optional(v.string()),
+          stepResult: v.optional(v.any()),
         })
       )
     ),

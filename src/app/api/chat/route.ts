@@ -16,8 +16,9 @@ import { api } from "../../../../convex/_generated/api";
 import { auth } from "@clerk/nextjs/server";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { createResumableStreamContext } from "resumable-stream";
+import { appendResponseMessages } from "ai";
+import { tools } from "@/ai/tools";
 import { after } from "next/server";
-import { tools as unifiedTodoTools } from "@/ai/tools";
 
 // Initialize Convex client for server-side usage
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -67,6 +68,19 @@ export async function POST(req: Request) {
     let messagesToSend: CoreMessage[] = [];
 
     if (authUserId && chatId && newUserMessage) {
+      // 🔥 CRITICAL: Save user message FIRST, before any other operations
+      try {
+        await convex.mutation(api.messages.saveMessage, {
+          chatId: chatId as Id<"chats">,
+          userId: authUserId,
+          role: "user",
+          body: newUserMessage.content as string,
+        });
+        console.log("✅ [SERVER] User message saved to database");
+      } catch (error) {
+        console.error("❌ [SERVER] Failed to save user message:", error);
+      }
+
       try {
         // 🔥 SERVER-SIDE HISTORY MANAGEMENT FOR AUTHENTICATED USERS
         console.log(
@@ -111,20 +125,8 @@ export async function POST(req: Request) {
           "📤 [SERVER] Total messages to send to AI:",
           messagesToSend.length
         );
-
-        // Save the new user message to database
-        await convex.mutation(api.messages.saveMessage, {
-          chatId: chatId as Id<"chats">,
-          userId: authUserId,
-          role: "user",
-          body: newUserMessage.content as string,
-        });
-        console.log("✅ [SERVER] User message saved to database");
       } catch (error) {
-        console.error(
-          "❌ [SERVER] Failed to load previous messages or save user message:",
-          error
-        );
+        console.error("❌ [SERVER] Failed to load previous messages:", error);
         // Fallback to using just the new message if database operations fail
         messagesToSend = convertToCoreMessages([newUserMessage]);
       }
@@ -189,7 +191,7 @@ export async function POST(req: Request) {
               "You are an AI assistant with powerful to-do management capabilities and generative UI features. You help users by providing clear, accurate, and helpful responses across a wide range of topics. You can assist with coding problems, explain concepts, help with learning, provide creative solutions, and engage in meaningful conversations. Additionally, you have access to comprehensive to-do management tools that can both manage tasks and display them in beautiful, interactive user interfaces. When users mention tasks, to-dos, reminders, or things they need to do, proactively offer to help them manage these items. When users want to view their todos, use the displayTodosUI tool to show them in a beautiful table format with all details like priority, due dates, projects, and tags. Be concise yet thorough, and always aim to be useful and informative. If you're unsure about something, acknowledge it honestly and suggest alternatives or ways to find the information.",
             temperature: 0.7,
             // 🛠️ Add unified to-do management and generative UI tools for authenticated users
-            tools: unifiedTodoTools,
+            tools: tools,
             maxSteps: 5, // Allow multiple tool calls in sequence
             // 🔥 ADD SMOOTH STREAMING for better UI rendering
             experimental_transform: smoothStream({
@@ -197,53 +199,74 @@ export async function POST(req: Request) {
               chunking: "word",
             }),
             onFinish: async (finishResult) => {
+              console.log("🏁 [SERVER] Stream finished, saving messages...");
+              console.log(
+                "🔍 [SERVER] finishResult keys:",
+                Object.keys(finishResult)
+              );
+
               try {
-                console.log("🔥 [SERVER] Processing AI finish result:", {
-                  hasText: !!finishResult.text,
-                  textLength: finishResult.text?.length || 0,
-                  hasToolResults: !!finishResult.toolResults?.length,
-                  toolResultsCount: finishResult.toolResults?.length || 0,
-                });
+                if (finishResult.response?.messages) {
+                  console.log(
+                    "🔄 [SERVER] Using appendResponseMessages to merge response messages"
+                  );
 
-                // PATTERN 1: Save tool results as separate "tool" role messages
-                if (finishResult.toolResults?.length) {
-                  for (const toolResult of finishResult.toolResults) {
-                    console.log("📊 [SERVER] Saving tool result:", {
-                      toolCallId: toolResult.toolCallId,
-                      toolName: toolResult.toolName,
-                      hasResult: !!toolResult.result,
-                    });
+                  // Build the UI message array representing what we had sent so far
+                  const uiMessages = messagesToSend.map((msg) => ({
+                    id: generateId(),
+                    role: msg.role as "user" | "assistant",
+                    content: typeof msg.content === "string" ? msg.content : "",
+                    parts: undefined,
+                    createdAt: new Date(),
+                  }));
 
-                    await convex.mutation(api.messages.saveMessage, {
-                      chatId: chatId as Id<"chats">,
-                      userId: authUserId,
-                      role: "tool",
-                      body: `Result for ${toolResult.toolName}`,
-                      toolCallId: toolResult.toolCallId,
-                      toolName: toolResult.toolName,
-                      toolResult: toolResult.result,
-                    });
+                  // Append the new response messages (assistant + tool) using the helper
+                  const updatedMessages = appendResponseMessages({
+                    messages: uiMessages,
+                    responseMessages: finishResult.response.messages,
+                  });
+
+                  // Only persist the newly-added messages
+                  const newMessages = updatedMessages.slice(uiMessages.length);
+
+                  for (const message of newMessages) {
+                    // Only save user and assistant messages
+                    if (
+                      message.role === "user" ||
+                      message.role === "assistant"
+                    ) {
+                      await convex.mutation(api.messages.saveRichMessage, {
+                        chatId: chatId as Id<"chats">,
+                        userId: authUserId,
+                        message: {
+                          id: message.id,
+                          role: message.role,
+                          content:
+                            typeof message.content === "string"
+                              ? message.content
+                              : "",
+                          parts: message.parts ?? undefined,
+                        },
+                      });
+
+                      console.log("✅ [SERVER] Saved response message", {
+                        role: message.role,
+                        hasParts: !!message.parts?.length,
+                      });
+                    }
                   }
+
+                  console.log(
+                    "✅ [SERVER] All AI response messages saved successfully"
+                  );
+                } else {
+                  console.log(
+                    "⚠️ [SERVER] No response.messages found in finishResult"
+                  );
                 }
-
-                // PATTERN 2: Save final assistant text response (contains tool calls as parts)
-                if (finishResult.text) {
-                  console.log("💬 [SERVER] Saving final assistant response:", {
-                    textLength: finishResult.text.length,
-                  });
-
-                  await convex.mutation(api.messages.saveMessage, {
-                    chatId: chatId as Id<"chats">,
-                    userId: authUserId,
-                    role: "assistant",
-                    body: finishResult.text,
-                  });
-                }
-
-                console.log("✅ [SERVER] All AI responses saved to database");
               } catch (error) {
                 console.error(
-                  "❌ [SERVER] Failed to save AI responses:",
+                  "❌ [SERVER] Failed to save AI response messages:",
                   error
                 );
               }

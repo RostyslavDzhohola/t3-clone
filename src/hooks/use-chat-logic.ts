@@ -61,99 +61,96 @@ export function useChatLogic({ chatId }: ChatLogicOptions) {
 
   // Convert Convex messages to useChat format
   const convertedMessages: Message[] = useMemo(() => {
-    return user && convexMessages
-      ? convexMessages
-          .filter((msg) => msg.role !== "tool") // Filter out tool result messages
-          .map((msg) => {
-            const baseMessage: Message = {
-              id: msg._id,
-              role: msg.role as "user" | "assistant",
-              content: msg.body,
-              createdAt: new Date(msg._creationTime),
-            };
+    console.log("🔄 [LOGIC] Converting Convex messages to UI format:", {
+      hasUser: !!user,
+      hasConvexMessages: !!convexMessages,
+      messageCount: convexMessages?.length || 0,
+    });
 
-            // 🔥 NEW PATTERN: Reconstruct tool invocations from database structure
-            if (msg.role === "assistant" && msg.toolCallId && msg.toolName) {
-              // This is a tool call message - convert to AI SDK tool invocation format
-              baseMessage.parts = [
-                {
-                  type: "tool-invocation" as const,
-                  toolInvocation: {
-                    toolCallId: msg.toolCallId,
-                    toolName: msg.toolName,
-                    args: msg.toolArgs || {},
-                    state: "call" as const,
-                  },
-                },
-              ];
+    if (!user || !convexMessages) {
+      console.log("⚠️ [LOGIC] No user or messages, returning empty array");
+      return [];
+    }
 
-              // Look for the corresponding tool result in the next messages
-              const toolResultMessage = convexMessages.find(
-                (resultMsg) =>
-                  resultMsg.role === "tool" &&
-                  resultMsg.toolCallId === msg.toolCallId
+    // 🔍 DEBUG: Log raw Convex messages structure
+    console.log(
+      "📨 [LOGIC] Raw Convex messages:",
+      convexMessages.map((msg) => ({
+        id: msg._id,
+        role: msg.role,
+        bodyLength: msg.body.length,
+        bodyPreview: msg.body.substring(0, 50) + "...",
+        hasToolCallId: !!msg.toolCallId,
+        toolName: msg.toolName,
+        hasToolArgs: !!msg.toolArgs,
+        hasToolResult: !!msg.toolResult,
+        hasParts: !!msg.parts?.length,
+        partsCount: msg.parts?.length || 0,
+      }))
+    );
+
+    // Filter out raw tool result messages; they will be merged into the assistant's
+    // tool-call message part.
+    const messagesToRender = convexMessages.filter(
+      (msg) => msg.role !== "tool"
+    );
+
+    const converted = messagesToRender
+      // No longer need to reconstruct from flattened columns.
+      // The `parts` array from the database is now the source of truth.
+      .map((msg) => {
+        const uiMessage: Message = {
+          id: msg._id,
+          role: msg.role as "user" | "assistant",
+          content: msg.body,
+          createdAt: new Date(msg._creationTime),
+          parts: undefined,
+        };
+
+        if (msg.parts && msg.parts.length > 0) {
+          // Find the tool call and result parts from the database message history.
+          // Note: This assumes a simplified flow where one assistant message
+          // has a tool call and a subsequent message has the result.
+          const toolCallPart = msg.parts.find((p) => p.type === "tool-call");
+          if (toolCallPart) {
+            const toolResultPart = convexMessages
+              .flatMap((m) => m.parts || [])
+              .find(
+                (p) =>
+                  p.type === "tool-result" &&
+                  p.toolCallId === toolCallPart.toolCallId
               );
 
-              if (toolResultMessage) {
-                // Add the result to the tool invocation
-                baseMessage.parts.push({
-                  type: "tool-invocation" as const,
-                  toolInvocation: {
-                    toolCallId: msg.toolCallId,
-                    toolName: msg.toolName,
-                    args: msg.toolArgs || {},
-                    state: "result" as const,
-                    result: toolResultMessage.toolResult,
-                  },
-                });
-              }
-            }
+            uiMessage.content = ""; // Clear body for tool messages
+            uiMessage.parts = [
+              {
+                type: "tool-invocation",
+                toolInvocation: {
+                  toolCallId: toolCallPart.toolCallId,
+                  toolName: toolCallPart.toolName,
+                  args: toolCallPart.args,
+                  state: toolResultPart ? "result" : "call",
+                  result: toolResultPart ? toolResultPart.result : undefined,
+                },
+              },
+            ] as Message["parts"];
+          }
+        }
+        return uiMessage;
+      });
 
-            // 🔄 BACKWARDS COMPATIBILITY: Handle legacy parts format
-            else if (msg.parts?.length) {
-              baseMessage.parts = msg.parts
-                .map(
-                  (part: {
-                    type: string;
-                    toolCallId?: string;
-                    toolName?: string;
-                    args?: Record<string, unknown>;
-                    result?: Record<string, unknown>;
-                  }) => {
-                    if (part.type === "tool-call") {
-                      return {
-                        type: "tool-invocation" as const,
-                        toolInvocation: {
-                          toolCallId: part.toolCallId || "",
-                          toolName: part.toolName || "",
-                          args: part.args || {},
-                          state: "call" as const,
-                        },
-                      };
-                    } else if (part.type === "tool-result") {
-                      return {
-                        type: "tool-invocation" as const,
-                        toolInvocation: {
-                          toolCallId: part.toolCallId || "",
-                          toolName: part.toolName || "",
-                          args: {},
-                          state: "result" as const,
-                          result: part.result,
-                        },
-                      };
-                    }
-                    // Filter out unrecognized legacy parts
-                    return null;
-                  }
-                )
-                .filter(
-                  (part): part is NonNullable<typeof part> => part !== null
-                );
-            }
+    console.log("✅ [LOGIC] Final converted messages:", {
+      count: converted.length,
+      summary: converted.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        hasContent: !!msg.content,
+        hasParts: !!msg.parts?.length,
+        partsCount: msg.parts?.length || 0,
+      })),
+    });
 
-            return baseMessage;
-          })
-      : [];
+    return converted;
   }, [user, convexMessages]);
 
   // Handle AI message finish callback
