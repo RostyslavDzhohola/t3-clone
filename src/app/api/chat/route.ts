@@ -3,7 +3,6 @@ import {
   streamText,
   convertToCoreMessages,
   appendClientMessage,
-  appendResponseMessages,
   smoothStream,
   createDataStream,
   generateId,
@@ -23,6 +22,7 @@ import { tools as unifiedTodoTools } from "@/ai/tools";
 // Initialize Convex client for server-side usage
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
+// appendResponseMessages is for saving the message with tool calls as parts
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY!,
 });
@@ -84,14 +84,14 @@ export async function POST(req: Request) {
           "previous messages"
         );
 
-        // Convert Convex messages to Message format
-        const previousUIMessages: Message[] = previousMessages.map(
-          (msg, index) => ({
-            id: `msg-${index}`, // Generate IDs for UI messages
-            role: msg.role as "user" | "assistant",
-            content: msg.body,
-          })
-        );
+        // Convert Convex messages to Message format with tool calls
+        const previousUIMessages: Message[] = previousMessages.map((msg) => ({
+          id: msg._id, // Use Convex system ID
+          role: msg.role as "user" | "assistant",
+          content: msg.body,
+          // Note: Parts will be loaded separately for UI rendering
+          createdAt: new Date(msg._creationTime),
+        }));
 
         // 🔥 Use appendClientMessage to combine database history with new user message
         const combinedUIMessages = appendClientMessage({
@@ -198,67 +198,54 @@ export async function POST(req: Request) {
             }),
             onFinish: async (finishResult) => {
               try {
-                // 🔥 APPEND RESPONSE MESSAGES - Enhanced for Future Tool Calls
-                //
-                // This implementation prepares for future AI function calling capabilities:
-                // 1. Uses appendResponseMessages to properly combine conversation history with AI responses
-                // 2. Preserves the full message structure including potential tool calls, function calls, etc.
-                // 3. Currently saves text response for compatibility, but structure is ready for:
-                //    - Tool call messages (function_call type)
-                //    - Tool result messages (tool_result type)
-                //    - Multi-modal content (images, files, etc.)
-                //    - Structured data and metadata
-                // 4. Future enhancement: Save full updatedMessages array to support conversation resume
-                //    with complete context including tool interactions
-                const updatedMessages = appendResponseMessages({
-                  messages: messagesToSend.map((msg, index) => ({
-                    id: `msg-${index}`,
-                    role: msg.role as "user" | "assistant",
-                    content:
-                      typeof msg.content === "string"
-                        ? msg.content
-                        : msg.content
-                            ?.map((part) =>
-                              part.type === "text" ? part.text : ""
-                            )
-                            .join("") || "",
-                  })),
-                  responseMessages: finishResult.response.messages,
+                console.log("🔥 [SERVER] Processing AI finish result:", {
+                  hasText: !!finishResult.text,
+                  textLength: finishResult.text?.length || 0,
+                  hasToolResults: !!finishResult.toolResults?.length,
+                  toolResultsCount: finishResult.toolResults?.length || 0,
                 });
 
-                // For now, we'll still save just the text response to maintain compatibility
-                // In the future, this will be enhanced to save the full message structure
-                // including tool calls, function calls, and richer content types
+                // PATTERN 1: Save tool results as separate "tool" role messages
+                if (finishResult.toolResults?.length) {
+                  for (const toolResult of finishResult.toolResults) {
+                    console.log("📊 [SERVER] Saving tool result:", {
+                      toolCallId: toolResult.toolCallId,
+                      toolName: toolResult.toolName,
+                      hasResult: !!toolResult.result,
+                    });
+
+                    await convex.mutation(api.messages.saveMessage, {
+                      chatId: chatId as Id<"chats">,
+                      userId: authUserId,
+                      role: "tool",
+                      body: `Result for ${toolResult.toolName}`,
+                      toolCallId: toolResult.toolCallId,
+                      toolName: toolResult.toolName,
+                      toolResult: toolResult.result,
+                    });
+                  }
+                }
+
+                // PATTERN 2: Save final assistant text response (contains tool calls as parts)
                 if (finishResult.text) {
+                  console.log("💬 [SERVER] Saving final assistant response:", {
+                    textLength: finishResult.text.length,
+                  });
+
                   await convex.mutation(api.messages.saveMessage, {
                     chatId: chatId as Id<"chats">,
                     userId: authUserId,
                     role: "assistant",
                     body: finishResult.text,
                   });
-                  console.log("✅ [SERVER] AI response saved to database");
-                  console.log("🔥 [SERVER] appendResponseMessages processed:", {
-                    originalMessageCount: messagesToSend.length,
-                    updatedMessageCount: updatedMessages.length,
-                    responseMessageCount: finishResult.response.messages.length,
-                    responseMessageTypes: finishResult.response.messages.map(
-                      (msg) => msg.role
-                    ),
-                    hasToolCalls: finishResult.response.messages.some(
-                      (msg) =>
-                        Array.isArray(msg.content) &&
-                        msg.content.some((part) => part.type === "tool-call")
-                    ),
-                  });
                 }
 
-                // Mark stream as inactive when complete
-                await convex.mutation(api.messages.markStreamInactive, {
-                  streamId,
-                });
-                console.log("🏁 [SERVER] Stream marked as complete:", streamId);
+                console.log("✅ [SERVER] All AI responses saved to database");
               } catch (error) {
-                console.error("❌ [SERVER] Failed to save AI response:", error);
+                console.error(
+                  "❌ [SERVER] Failed to save AI responses:",
+                  error
+                );
               }
             },
           });

@@ -69,8 +69,30 @@ export const saveMessage = mutation({
   args: {
     chatId: v.id("chats"),
     userId: v.string(),
-    role: v.union(v.literal("user"), v.literal("assistant")),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
     body: v.string(),
+    // Tool-related fields following AI SDK pattern
+    toolCallId: v.optional(v.string()),
+    toolName: v.optional(v.string()),
+    toolArgs: v.optional(v.any()),
+    toolResult: v.optional(v.any()),
+    // Legacy fields for backwards compatibility
+    parts: v.optional(
+      v.array(
+        v.object({
+          type: v.union(
+            v.literal("text"),
+            v.literal("tool-call"),
+            v.literal("tool-result")
+          ),
+          text: v.optional(v.string()),
+          toolCallId: v.optional(v.string()),
+          toolName: v.optional(v.string()),
+          args: v.optional(v.any()),
+          result: v.optional(v.any()),
+        })
+      )
+    ),
   },
   returns: v.id("messages"),
   handler: async (ctx, args) => {
@@ -80,6 +102,9 @@ export const saveMessage = mutation({
       role: args.role,
       bodyLength: args.body.length,
       bodyPreview: args.body.slice(0, 50) + "...",
+      hasToolCall: !!(args.toolCallId && args.toolName),
+      hasToolResult: !!args.toolResult,
+      hasParts: !!args.parts?.length,
     });
 
     try {
@@ -98,19 +123,88 @@ export const saveMessage = mutation({
       });
       console.log("✅ [CONVEX] Chat lastMessageTime updated");
 
-      // Insert the message
+      // Insert the message with tool information
       console.log("📝 [CONVEX] Inserting message...");
       const messageId = await ctx.db.insert("messages", {
         chatId: args.chatId,
         userId: args.userId,
         role: args.role,
         body: args.body,
+        toolCallId: args.toolCallId,
+        toolName: args.toolName,
+        toolArgs: args.toolArgs,
+        toolResult: args.toolResult,
+        parts: args.parts,
       });
 
       console.log("✅ [CONVEX] Message saved successfully with ID:", messageId);
+      if (args.toolCallId) {
+        console.log("🛠️ [CONVEX] Saved tool message:", {
+          toolName: args.toolName,
+          hasArgs: !!args.toolArgs,
+          hasResult: !!args.toolResult,
+        });
+      }
       return messageId;
     } catch (error) {
       console.error("❌ [CONVEX] Failed to save message:", error);
+      throw error;
+    }
+  },
+});
+
+// Add a specialized function for saving AI SDK messages with full structure
+export const saveRichMessage = mutation({
+  args: {
+    chatId: v.id("chats"),
+    userId: v.string(),
+    message: v.object({
+      id: v.string(),
+      role: v.union(
+        v.literal("user"),
+        v.literal("assistant"),
+        v.literal("tool")
+      ),
+      content: v.optional(v.string()),
+      parts: v.optional(v.array(v.any())),
+      createdAt: v.optional(v.any()),
+    }),
+  },
+  returns: v.id("messages"),
+  handler: async (ctx, args) => {
+    console.log("🎨 [CONVEX] saveRichMessage called with message:", {
+      id: args.message.id,
+      role: args.message.role,
+      hasContent: !!args.message.content,
+      hasParts: !!args.message.parts?.length,
+      partsCount: args.message.parts?.length || 0,
+    });
+
+    try {
+      // Verify the chat exists
+      const chat = await ctx.db.get(args.chatId);
+      if (!chat) {
+        throw new Error(`Chat not found: ${args.chatId}`);
+      }
+
+      // Update the chat's last message time
+      await ctx.db.patch(args.chatId, {
+        lastMessageTime: Date.now(),
+      });
+
+      // Insert the message with full structure
+      const messageId = await ctx.db.insert("messages", {
+        chatId: args.chatId,
+        userId: args.userId,
+        role: args.message.role,
+        body: args.message.content || "",
+        parts: args.message.parts || undefined,
+      });
+
+      console.log("✅ [CONVEX] Rich message saved successfully");
+      return messageId;
+    } catch (error) {
+      console.error("❌ [CONVEX] Failed to save rich message:", error);
       throw error;
     }
   },
@@ -127,8 +221,34 @@ export const getMessages = query({
       _creationTime: v.number(),
       chatId: v.id("chats"),
       userId: v.string(),
-      role: v.union(v.literal("user"), v.literal("assistant")),
+      role: v.union(
+        v.literal("user"),
+        v.literal("assistant"),
+        v.literal("tool")
+      ),
       body: v.string(),
+      // Tool-related fields following AI SDK pattern
+      toolCallId: v.optional(v.string()),
+      toolName: v.optional(v.string()),
+      toolArgs: v.optional(v.any()),
+      toolResult: v.optional(v.any()),
+      // Legacy fields for backwards compatibility
+      parts: v.optional(
+        v.array(
+          v.object({
+            type: v.union(
+              v.literal("text"),
+              v.literal("tool-call"),
+              v.literal("tool-result")
+            ),
+            text: v.optional(v.string()),
+            toolCallId: v.optional(v.string()),
+            toolName: v.optional(v.string()),
+            args: v.optional(v.any()),
+            result: v.optional(v.any()),
+          })
+        )
+      ),
     })
   ),
   handler: async (ctx, args) => {

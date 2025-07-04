@@ -62,12 +62,97 @@ export function useChatLogic({ chatId }: ChatLogicOptions) {
   // Convert Convex messages to useChat format
   const convertedMessages: Message[] = useMemo(() => {
     return user && convexMessages
-      ? convexMessages.map((msg) => ({
-          id: msg._id,
-          role: msg.role,
-          content: msg.body,
-          createdAt: new Date(msg._creationTime),
-        }))
+      ? convexMessages
+          .filter((msg) => msg.role !== "tool") // Filter out tool result messages
+          .map((msg) => {
+            const baseMessage: Message = {
+              id: msg._id,
+              role: msg.role as "user" | "assistant",
+              content: msg.body,
+              createdAt: new Date(msg._creationTime),
+            };
+
+            // 🔥 NEW PATTERN: Reconstruct tool invocations from database structure
+            if (msg.role === "assistant" && msg.toolCallId && msg.toolName) {
+              // This is a tool call message - convert to AI SDK tool invocation format
+              baseMessage.parts = [
+                {
+                  type: "tool-invocation" as const,
+                  toolInvocation: {
+                    toolCallId: msg.toolCallId,
+                    toolName: msg.toolName,
+                    args: msg.toolArgs || {},
+                    state: "call" as const,
+                  },
+                },
+              ];
+
+              // Look for the corresponding tool result in the next messages
+              const toolResultMessage = convexMessages.find(
+                (resultMsg) =>
+                  resultMsg.role === "tool" &&
+                  resultMsg.toolCallId === msg.toolCallId
+              );
+
+              if (toolResultMessage) {
+                // Add the result to the tool invocation
+                baseMessage.parts.push({
+                  type: "tool-invocation" as const,
+                  toolInvocation: {
+                    toolCallId: msg.toolCallId,
+                    toolName: msg.toolName,
+                    args: msg.toolArgs || {},
+                    state: "result" as const,
+                    result: toolResultMessage.toolResult,
+                  },
+                });
+              }
+            }
+
+            // 🔄 BACKWARDS COMPATIBILITY: Handle legacy parts format
+            else if (msg.parts?.length) {
+              baseMessage.parts = msg.parts
+                .map(
+                  (part: {
+                    type: string;
+                    toolCallId?: string;
+                    toolName?: string;
+                    args?: Record<string, unknown>;
+                    result?: Record<string, unknown>;
+                  }) => {
+                    if (part.type === "tool-call") {
+                      return {
+                        type: "tool-invocation" as const,
+                        toolInvocation: {
+                          toolCallId: part.toolCallId || "",
+                          toolName: part.toolName || "",
+                          args: part.args || {},
+                          state: "call" as const,
+                        },
+                      };
+                    } else if (part.type === "tool-result") {
+                      return {
+                        type: "tool-invocation" as const,
+                        toolInvocation: {
+                          toolCallId: part.toolCallId || "",
+                          toolName: part.toolName || "",
+                          args: {},
+                          state: "result" as const,
+                          result: part.result,
+                        },
+                      };
+                    }
+                    // Filter out unrecognized legacy parts
+                    return null;
+                  }
+                )
+                .filter(
+                  (part): part is NonNullable<typeof part> => part !== null
+                );
+            }
+
+            return baseMessage;
+          })
       : [];
   }, [user, convexMessages]);
 

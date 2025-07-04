@@ -4,7 +4,7 @@ import { memo } from "react";
 import { motion } from "framer-motion";
 import type { Message } from "@ai-sdk/react";
 import { Markdown } from "@/components/markdown";
-import { TodoListDisplay } from "@/components/tools/todo-list-display";
+import { TodoListDisplay, ToolInvocationDisplay } from "@/components/tools";
 
 interface ChatMessageProps {
   message: Message;
@@ -71,37 +71,230 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
             <Markdown>{String(message.content)}</Markdown>
           )}
 
-          {/* 🔧 TOOL INVOCATIONS RENDERING - Generative UI (AI SDK v4) */}
-          {message.toolInvocations?.map((toolInvocation) => {
-            const { toolName, toolCallId, state } = toolInvocation;
+          {/* 🛠️ TOOL INVOCATION DETAILS - Show behind-the-scenes tool execution */}
+          {message.parts?.map((part, index) => {
+            // Show tool call details (what the model is thinking)
+            if (part.type === "tool-invocation" && "toolInvocation" in part) {
+              const { toolInvocation } = part;
+              const { toolName, state } = toolInvocation;
 
-            if (state === "result") {
+              const partKey = `invocation-${index}-${toolName}`;
+
+              return (
+                <div key={partKey} className="mt-4">
+                  <ToolInvocationDisplay
+                    toolName={toolName}
+                    args={toolInvocation.args}
+                    state={state === "result" ? "result" : "call"}
+                    result={
+                      state === "result" ? toolInvocation.result : undefined
+                    }
+                    timestamp={new Date()}
+                  />
+                </div>
+              );
+            }
+            return null;
+          })}
+
+          {/* 🔧 TOOL INVOCATIONS RENDERING - Using new parts pattern (AI SDK v4.2+) */}
+          {message.parts?.map((part, index) => {
+            // Check if this part is a tool invocation
+            if (part.type === "tool-invocation" && "toolInvocation" in part) {
+              const { toolInvocation } = part;
+              const { toolName, state } = toolInvocation;
+
+              // Generate a unique key using the part index and tool name
+              const partKey = `${index}-${toolName}`;
+
+              if (state === "result") {
+                // 🛠️ Show tool invocation result details first
+                const toolInvocationElement = (
+                  <ToolInvocationDisplay
+                    toolName={toolName}
+                    args={toolInvocation.args}
+                    state="result"
+                    result={toolInvocation.result}
+                    timestamp={new Date()}
+                  />
+                );
+
+                // Handle all todo tools that return UI-compatible data
+                if (toolName === "getTodos" || toolName === "displayTodosUI") {
+                  const { result } = toolInvocation;
+                  if (result.success && result.todos) {
+                    return (
+                      <div key={partKey} className="space-y-4 mt-4">
+                        {toolInvocationElement}
+                        <TodoListDisplay
+                          todos={result.todos}
+                          count={result.count}
+                          filterApplied={
+                            result.filterApplied || {
+                              completed: null,
+                              project: null,
+                            }
+                          }
+                          success={result.success}
+                          error={result.error}
+                        />
+                      </div>
+                    );
+                  } else {
+                    // Just show tool invocation if no UI data
+                    return (
+                      <div key={partKey} className="mt-4">
+                        {toolInvocationElement}
+                      </div>
+                    );
+                  }
+                } else {
+                  // For non-UI tools, just show the tool invocation
+                  return (
+                    <div key={partKey} className="mt-4">
+                      {toolInvocationElement}
+                    </div>
+                  );
+                }
+              } else {
+                // Show loading state for pending tool calls
+                return (
+                  <div key={partKey} className="mt-4">
+                    {toolName === "getTodos" ||
+                    toolName === "displayTodosUI" ? (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                        <div className="inline-flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                          <span className="text-gray-600">
+                            Loading your todos...
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                        <div className="inline-flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                          <span className="text-gray-600">Processing...</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+            }
+            return null; // Return null for non-tool-invocation parts
+          })}
+
+          {/* 🎯 CRITICAL: Handle stored parts pattern - for loaded messages from database */}
+          {/* This handles messages loaded from the database that have parts stored */}
+          {(
+            message as {
+              parts?: Array<{
+                type: string;
+                toolName?: string;
+                args?: Record<string, unknown>;
+                result?: {
+                  success?: boolean;
+                  todos?: Array<{
+                    id: string;
+                    description: string;
+                    completed: boolean;
+                    project?: string;
+                    tags?: string[];
+                    priority?: "low" | "medium" | "high";
+                    dueDate?: string;
+                    createdAt: string;
+                  }>;
+                  count?: number;
+                  filterApplied?: {
+                    completed: boolean | null;
+                    project: string | null;
+                  };
+                  error?: string;
+                };
+                toolCallId?: string;
+              }>;
+            }
+          ).parts?.map((part, index: number) => {
+            // 🛠️ Show stored tool call details first
+            if (part.type === "tool-call") {
+              const { toolName, args, toolCallId } = part;
+              const partKey = `stored-call-${toolCallId || index}-${toolName}`;
+
+              return (
+                <div key={partKey} className="mt-4">
+                  <ToolInvocationDisplay
+                    toolName={toolName || "unknown"}
+                    args={args}
+                    state="call"
+                    timestamp={message.createdAt}
+                  />
+                </div>
+              );
+            }
+            // Handle tool-result parts that contain UI data
+            if (part.type === "tool-result") {
+              const { toolName, result, toolCallId, args } = part;
+
+              // Generate a unique key using the tool call ID and tool name
+              const partKey = `part-${toolCallId || index}-${toolName}`;
+
+              // 🛠️ Show tool invocation result details first
+              const resultKey = `stored-result-${
+                toolCallId || index
+              }-${toolName}`;
+              const toolInvocationElement = (
+                <div key={resultKey} className="mt-4">
+                  <ToolInvocationDisplay
+                    toolName={toolName || "unknown"}
+                    args={args}
+                    state={result?.success === false ? "error" : "result"}
+                    result={result}
+                    error={
+                      result?.success === false ? result?.error : undefined
+                    }
+                    timestamp={message.createdAt}
+                  />
+                </div>
+              );
+
               // Handle all todo tools that return UI-compatible data
               if (toolName === "getTodos" || toolName === "displayTodosUI") {
-                const { result } = toolInvocation;
-                if (result.success && result.todos) {
+                if (result && result.success && result.todos) {
                   return (
-                    <div key={toolCallId} className="mt-4">
+                    <div key={partKey} className="space-y-4 mt-4">
+                      {toolInvocationElement}
                       <TodoListDisplay
                         todos={result.todos}
-                        count={result.count}
+                        count={result.count || 0}
                         filterApplied={
                           result.filterApplied || {
                             completed: null,
                             project: null,
                           }
                         }
-                        success={result.success}
+                        success={result.success || false}
                         error={result.error}
                       />
                     </div>
                   );
+                } else {
+                  // Just show the tool invocation if there's no UI data
+                  return toolInvocationElement;
                 }
+              } else {
+                // For non-UI tools, just show the tool invocation
+                return toolInvocationElement;
               }
-            } else {
-              // Show loading state for pending tool calls
+            }
+
+            // Handle tool-call parts (show loading state - rare for persisted data)
+            if (part.type === "tool-call") {
+              const { toolName, toolCallId } = part;
+              const partKey = `part-call-${toolCallId || index}-${toolName}`;
+
               return (
-                <div key={toolCallId} className="mt-4">
+                <div key={partKey} className="mt-4">
                   {toolName === "getTodos" || toolName === "displayTodosUI" ? (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
                       <div className="inline-flex items-center gap-2">
@@ -122,7 +315,8 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
                 </div>
               );
             }
-            return null; // Return null for unhandled tool invocations
+
+            return null; // Return null for other part types
           })}
         </div>
       </div>

@@ -179,7 +179,7 @@ export const updateTodo = tool({
 
 export const getTodos = tool({
   description:
-    "Get the user's to-do list, optionally filtered by completion status or project. CRITICAL: Always check this tool for the latest updates instead of relying on chat message history. When displaying results, use these formatting guidelines:\n\n**Default Display:** Always use the Simplified View unless the user specifically requests the Complete View.\n\n**For Simplified View:**\n- Use markdown list formatting (with dashes)\n- Format each item as: - [Status Emoji] Description\n- Status: ✅ (completed) or 🔴 (not completed)\n- Do NOT show IDs in simplified view\n- Example: - 🔴 Fix the login bug\n\n**For Complete View:**\n- Format description as h3 heading with status emoji: ### [Status Emoji] Description\n- Below the heading, display details in bullet list format:\n  - Project: [project name]\n  - Tags: [tag1, tag2, ...]\n  - Priority: [priority level]\n  - Due Date: [date with urgency emoji]\n  - ID: [todo ID]\n- Due Date Urgency: ⚠️ (overdue), 🔥 (due today), ⏰ (due soon), 📅 (future due date)\n- Group by project or priority when helpful\n\nAlways format lists in a clean, readable manner with proper line breaks between items. This tool also supports beautiful UI display - if the user wants to see todos in a table format, this tool will return UI-compatible data that gets rendered as a beautiful TodoListDisplay component.",
+    "Get the user's to-do list, optionally filtered by completion status or project. CRITICAL: Always check this tool for the latest updates instead of relying on chat message history. \n\n**IMPORTANT UI BEHAVIOR:**\n- When user asks to 'show', 'display', 'list', or 'see' their todos, ALWAYS use the displayTodosUI tool instead of this one\n- This tool is primarily for text-based responses and internal data retrieval\n- For any visual display requests, use displayTodosUI which renders the beautiful TodoListDisplay component\n\n**For text-only responses (when NOT displaying UI):**\n- Use markdown list formatting (with dashes)\n- Format each item as: - [Status Emoji] Description\n- Status: ✅ (completed) or 🔴 (not completed)\n- Do NOT show IDs in simplified view\n- Example: - 🔴 Fix the login bug",
   parameters: z.object({
     completed: z
       .boolean()
@@ -407,10 +407,10 @@ export const getTags = tool({
   },
 });
 
-// 🎨 SPECIALIZED UI DISPLAY TOOL (Alternative to getTodos for explicit UI requests)
+// 🎨 SPECIALIZED UI DISPLAY TOOL (Primary tool for visual todo display)
 export const displayTodosUI = tool({
   description:
-    "Display the user's to-do list in a beautiful UI format with rows and columns, specifically for when users explicitly ask for a visual/table display. This is an alternative to getTodos that focuses purely on UI rendering. Use this when users specifically request visual display, otherwise use getTodos which can handle both text and UI display.",
+    "**PRIMARY TOOL FOR VISUAL TODO DISPLAY** - Use this tool whenever users ask to 'show', 'display', 'list', 'see', or want to view their to-do list. This tool renders the beautiful TodoListDisplay component with proper styling, tables, and interactive elements.\n\n**CRITICAL USAGE RULES:**\n- ALWAYS use this tool when users request to see/show/display their todos\n- This tool returns data specifically formatted for the TodoListDisplay React component\n- The response will automatically render as a beautiful UI table with status indicators, priorities, due dates, and tags\n- After calling this tool, DO NOT format the response as markdown - let the UI component handle the display\n- This takes precedence over getTodos for any visual display requests\n\n**When to use this tool:**\n- 'Show me my todos'\n- 'Display my to-do list'\n- 'Let me see my tasks'\n- 'List my todos'\n- Any request for visual representation of todos\n\n**Tool behavior:**\n- Returns data in the exact format expected by TodoListDisplay component\n- Includes all necessary styling and formatting information\n- Handles empty states, error states, and filtered views",
   parameters: z.object({
     completed: z
       .boolean()
@@ -465,6 +465,19 @@ export const displayTodosUI = tool({
           completed: completed !== undefined ? completed : null,
           project: project || null,
         },
+        // Add explicit UI rendering instruction
+        renderUI: true,
+        componentType: "TodoListDisplay",
+        // Add a user-friendly message for the AI to respond with
+        message: `Here's your todo list with ${todos.length} item${
+          todos.length !== 1 ? "s" : ""
+        }${
+          completed !== undefined
+            ? completed
+              ? " (completed)"
+              : " (pending)"
+            : ""
+        }${project ? ` in project "${project}"` : ""}`,
       };
     } catch (error) {
       console.error("❌ [UI TOOL] Failed to get todos for UI display:", error);
@@ -478,6 +491,8 @@ export const displayTodosUI = tool({
           completed: null,
           project: null,
         },
+        renderUI: true,
+        componentType: "TodoListDisplay",
       };
     }
   },

@@ -14,8 +14,28 @@ export default defineSchema({
   messages: defineTable({
     chatId: v.id("chats"),
     userId: v.string(),
-    role: v.union(v.literal("user"), v.literal("assistant")),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
     body: v.string(),
+    toolCallId: v.optional(v.string()),
+    toolName: v.optional(v.string()),
+    toolArgs: v.optional(v.any()),
+    toolResult: v.optional(v.any()),
+    parts: v.optional(
+      v.array(
+        v.object({
+          type: v.union(
+            v.literal("text"),
+            v.literal("tool-call"),
+            v.literal("tool-result")
+          ),
+          text: v.optional(v.string()),
+          toolCallId: v.optional(v.string()),
+          toolName: v.optional(v.string()),
+          args: v.optional(v.any()),
+          result: v.optional(v.any()),
+        })
+      )
+    ),
   }).index("by_chat", ["chatId"]),
 
   // Resumable streams for chat continuity
