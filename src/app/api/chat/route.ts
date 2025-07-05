@@ -214,10 +214,7 @@ export async function POST(req: Request) {
             }),
             onFinish: async (finishResult) => {
               console.log("🏁 [SERVER] Stream finished, saving messages...");
-              console.log(
-                "🔍 [SERVER] finishResult keys:",
-                Object.keys(finishResult)
-              );
+              console.log("🔍 [SERVER] finishResult:", JSON.stringify(finishResult, null, 2));
 
               try {
                 if (finishResult.response?.messages) {
@@ -239,9 +236,11 @@ export async function POST(req: Request) {
                     messages: uiMessages,
                     responseMessages: finishResult.response.messages,
                   });
+                  console.log("📥 [SERVER] updatedMessages:", JSON.stringify(updatedMessages, null, 2));
 
                   // Only persist the newly-added messages
                   const newMessages = updatedMessages.slice(uiMessages.length);
+                  console.log("🆕 [SERVER] newMessages to persist:", JSON.stringify(newMessages, null, 2));
 
                   for (const message of newMessages) {
                     // Save user, assistant, and tool messages
@@ -268,7 +267,8 @@ export async function POST(req: Request) {
 
                       console.log("✅ [SERVER] Saved response message", {
                         role: messageRole,
-                        hasParts: messageRole === "tool" ? !!(message.parts?.length) : false,
+                        hasParts: !!(message.parts?.length),
+                        partsPreview: message.parts?.slice(0, 1),
                       });
                     }
                   }
