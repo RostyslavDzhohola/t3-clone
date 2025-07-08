@@ -158,26 +158,20 @@ export const saveRichMessage = mutation({
   args: {
     chatId: v.id("chats"),
     userId: v.string(),
-    message: v.object({
-      id: v.string(),
-      role: v.union(
-        v.literal("user"),
-        v.literal("assistant"),
-        v.literal("tool")
-      ),
-      content: v.optional(v.string()),
-      parts: v.optional(v.array(v.any())),
-      createdAt: v.optional(v.any()),
-    }),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
+    content: v.string(),
+    // Add structured tool fields, all optional
+    toolCallId: v.optional(v.string()),
+    toolName: v.optional(v.string()),
+    toolArgs: v.optional(v.any()),
+    toolResult: v.optional(v.any()),
   },
   returns: v.id("messages"),
   handler: async (ctx, args) => {
     console.log("🎨 [CONVEX] saveRichMessage called with message:", {
-      id: args.message.id,
-      role: args.message.role,
-      hasContent: !!args.message.content,
-      hasParts: !!args.message.parts?.length,
-      partsCount: args.message.parts?.length || 0,
+      role: args.role,
+      hasContent: !!args.content,
+      toolName: args.toolName,
     });
 
     try {
@@ -192,13 +186,19 @@ export const saveRichMessage = mutation({
         lastMessageTime: Date.now(),
       });
 
-      // Insert the message with full structure
+      // Insert the message with full structure, mapping args to schema fields
       const messageId = await ctx.db.insert("messages", {
         chatId: args.chatId,
         userId: args.userId,
-        role: args.message.role,
-        body: args.message.content || "",
-        parts: args.message.parts || undefined,
+        role: args.role,
+        body: args.content, // Map content to body
+        // Persist structured tool data
+        toolCallId: args.toolCallId,
+        toolName: args.toolName,
+        toolArgs: args.toolArgs,
+        toolResult: args.toolResult,
+        // We no longer save the raw 'parts' array
+        parts: undefined,
       });
 
       console.log("✅ [CONVEX] Rich message saved successfully");

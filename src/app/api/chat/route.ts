@@ -20,8 +20,50 @@ import { appendResponseMessages } from "ai";
 import { tools } from "@/ai/tools";
 import { after } from "next/server";
 
+// Type interfaces for tool parts
+interface ToolCallPart {
+  type: "tool-call";
+  toolCallId: string;
+  toolName: string;
+  args: unknown;
+}
+
+interface ToolResultPart {
+  type: "tool-result";
+  toolCallId: string;
+  toolName: string;
+  result: unknown;
+}
+
+// Type guard for ToolCallPart
+function isToolCallPart(part: unknown): part is ToolCallPart {
+  return (
+    typeof part === "object" &&
+    part !== null &&
+    (part as ToolCallPart).type === "tool-call"
+  );
+}
+
+// Type guard for ToolResultPart
+function isToolResultPart(part: unknown): part is ToolResultPart {
+  return (
+    typeof part === "object" &&
+    part !== null &&
+    (part as ToolResultPart).type === "tool-result"
+  );
+}
+
 // Initialize Convex client for server-side usage
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+function getConvexClient(): ConvexHttpClient {
+  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+    // During build time, return a mock client to avoid errors
+    return {
+      mutation: () => Promise.resolve(),
+      query: () => Promise.resolve([]),
+    } as unknown as ConvexHttpClient;
+  }
+  return new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+}
 
 // appendResponseMessages is for saving the message with tool calls as parts
 const openrouter = createOpenRouter({
@@ -34,6 +76,14 @@ const streamContext = createResumableStreamContext({
 });
 
 export async function POST(req: Request) {
+  // Skip during build time
+  if (
+    process.env.NODE_ENV === "production" &&
+    !process.env.NEXT_PUBLIC_CONVEX_URL
+  ) {
+    return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+  }
+
   try {
     // Parse and validate request body
     let newUserMessage: Message | undefined;
@@ -70,7 +120,7 @@ export async function POST(req: Request) {
     if (authUserId && chatId && newUserMessage) {
       // 🔥 CRITICAL: Save user message FIRST, before any other operations
       try {
-        await convex.mutation(api.messages.saveMessage, {
+        await getConvexClient().mutation(api.messages.saveMessage, {
           chatId: chatId as Id<"chats">,
           userId: authUserId,
           role: "user",
@@ -88,9 +138,12 @@ export async function POST(req: Request) {
           chatId
         );
 
-        const previousMessages = await convex.query(api.messages.getMessages, {
-          chatId: chatId as Id<"chats">,
-        });
+        const previousMessages = await getConvexClient().query(
+          api.messages.getMessages,
+          {
+            chatId: chatId as Id<"chats">,
+          }
+        );
 
         console.log(
           "✅ [SERVER] Loaded",
@@ -99,13 +152,20 @@ export async function POST(req: Request) {
         );
 
         // Convert Convex messages to Message format with tool calls
-        const previousUIMessages: Message[] = previousMessages.map((msg) => ({
-          id: msg._id, // Use Convex system ID
-          role: msg.role as "user" | "assistant",
-          content: msg.body,
-          // Note: Parts will be loaded separately for UI rendering
-          createdAt: new Date(msg._creationTime),
-        }));
+        const previousUIMessages: Message[] = previousMessages.map(
+          (msg: {
+            _id: string;
+            role: string;
+            body: string;
+            _creationTime: number;
+          }) => ({
+            id: msg._id, // Use Convex system ID
+            role: msg.role as "user" | "assistant",
+            content: msg.body,
+            // Note: Parts will be loaded separately for UI rendering
+            createdAt: new Date(msg._creationTime),
+          })
+        );
 
         // 🔥 Use appendClientMessage to combine database history with new user message
         const combinedUIMessages = appendClientMessage({
@@ -173,7 +233,7 @@ export async function POST(req: Request) {
       const streamId = generateId();
 
       // Record this new stream so we can resume later
-      await convex.mutation(api.messages.appendStreamId, {
+      await getConvexClient().mutation(api.messages.appendStreamId, {
         chatId: chatId as Id<"chats">,
         streamId,
         userId: authUserId,
@@ -201,8 +261,8 @@ export async function POST(req: Request) {
             onFinish: async (finishResult) => {
               console.log("🏁 [SERVER] Stream finished, saving messages...");
               console.log(
-                "🔍 [SERVER] finishResult keys:",
-                Object.keys(finishResult)
+                "🔍 [SERVER] finishResult:",
+                JSON.stringify(finishResult, null, 2)
               );
 
               try {
@@ -225,33 +285,72 @@ export async function POST(req: Request) {
                     messages: uiMessages,
                     responseMessages: finishResult.response.messages,
                   });
+                  console.log(
+                    "📥 [SERVER] updatedMessages:",
+                    JSON.stringify(updatedMessages, null, 2)
+                  );
 
                   // Only persist the newly-added messages
                   const newMessages = updatedMessages.slice(uiMessages.length);
+                  console.log(
+                    "🆕 [SERVER] newMessages to persist:",
+                    JSON.stringify(newMessages, null, 2)
+                  );
 
                   for (const message of newMessages) {
-                    // Only save user and assistant messages
+                    const messageRole = message.role as
+                      | "user"
+                      | "assistant"
+                      | "tool";
                     if (
-                      message.role === "user" ||
-                      message.role === "assistant"
+                      messageRole === "user" ||
+                      messageRole === "assistant" ||
+                      messageRole === "tool"
                     ) {
-                      await convex.mutation(api.messages.saveRichMessage, {
-                        chatId: chatId as Id<"chats">,
-                        userId: authUserId,
-                        message: {
-                          id: message.id,
-                          role: message.role,
+                      // Prepare structured data for our new mutation
+                      let toolCallId, toolName, toolArgs, toolResult;
+
+                      // Parse the parts array to extract structured data
+                      if (message.parts && message.parts.length > 0) {
+                        for (const part of message.parts) {
+                          if (isToolCallPart(part)) {
+                            const toolCallPart = part as ToolCallPart;
+                            toolCallId = toolCallPart.toolCallId;
+                            toolName = toolCallPart.toolName;
+                            toolArgs = toolCallPart.args;
+                          } else if (isToolResultPart(part)) {
+                            const toolResultPart = part as ToolResultPart;
+                            toolCallId = toolResultPart.toolCallId;
+                            toolName = toolResultPart.toolName;
+                            toolResult = toolResultPart.result;
+                          }
+                        }
+                      }
+
+                      await getConvexClient().mutation(
+                        api.messages.saveRichMessage,
+                        {
+                          chatId: chatId as Id<"chats">,
+                          userId: authUserId,
+                          role: messageRole,
                           content:
                             typeof message.content === "string"
                               ? message.content
                               : "",
-                          parts: message.parts ?? undefined,
-                        },
-                      });
+                          // Pass the extracted, structured data
+                          toolCallId,
+                          toolName,
+                          toolArgs,
+                          toolResult,
+                        }
+                      );
 
                       console.log("✅ [SERVER] Saved response message", {
-                        role: message.role,
-                        hasParts: !!message.parts?.length,
+                        role: messageRole,
+                        hasContent:
+                          typeof message.content === "string" &&
+                          message.content.length > 0,
+                        toolName: toolName,
                       });
                     }
                   }
@@ -263,6 +362,59 @@ export async function POST(req: Request) {
                   console.log(
                     "⚠️ [SERVER] No response.messages found in finishResult"
                   );
+
+                  // 📦 Handle toolResults when response.messages is absent (tool call scenario)
+                  if (
+                    finishResult.toolResults &&
+                    finishResult.toolResults.length > 0
+                  ) {
+                    console.log(
+                      `🔧 [SERVER] Persisting ${finishResult.toolResults.length} toolResults`
+                    );
+
+                    // 1. Save each tool result as its own tool message
+                    for (const toolResult of finishResult.toolResults) {
+                      await getConvexClient().mutation(
+                        api.messages.saveRichMessage,
+                        {
+                          chatId: chatId as Id<"chats">,
+                          userId: authUserId,
+                          role: "tool",
+                          content: "", // Tool messages store data in parts, not body
+                          toolCallId: toolResult.toolCallId,
+                          toolName: toolResult.toolName,
+                          toolArgs: (toolResult as { args?: unknown }).args,
+                          toolResult: toolResult.result,
+                        }
+                      );
+
+                      console.log("✅ [SERVER] Saved tool message", {
+                        toolName: toolResult.toolName,
+                        toolCallId: toolResult.toolCallId,
+                      });
+                    }
+
+                    // 2. Persist the assistant's synthesized text, if provided
+                    if (finishResult.text && finishResult.text.length > 0) {
+                      await getConvexClient().mutation(
+                        api.messages.saveRichMessage,
+                        {
+                          chatId: chatId as Id<"chats">,
+                          userId: authUserId,
+                          role: "assistant",
+                          content: finishResult.text,
+                          toolCallId: undefined,
+                          toolName: undefined,
+                          toolArgs: undefined,
+                          toolResult: undefined,
+                        }
+                      );
+
+                      console.log(
+                        "✅ [SERVER] Saved assistant message after tool calls"
+                      );
+                    }
+                  }
                 }
               } catch (error) {
                 console.error(
@@ -296,6 +448,14 @@ export async function POST(req: Request) {
  * GET handler for resuming chat streams
  */
 export async function GET(request: Request) {
+  // Skip during build time
+  if (
+    process.env.NODE_ENV === "production" &&
+    !process.env.NEXT_PUBLIC_CONVEX_URL
+  ) {
+    return new Response("Service unavailable", { status: 503 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const chatId = searchParams.get("chatId");
@@ -313,7 +473,7 @@ export async function GET(request: Request) {
     }
 
     // Load stream IDs for this chat
-    const streamIds = await convex.query(api.messages.loadStreams, {
+    const streamIds = await getConvexClient().query(api.messages.loadStreams, {
       chatId: chatId as Id<"chats">,
     });
 
@@ -351,7 +511,7 @@ export async function GET(request: Request) {
      */
     console.log("🔚 [SERVER] Stream has concluded, loading last message");
 
-    const messages = await convex.query(api.messages.getMessages, {
+    const messages = await getConvexClient().query(api.messages.getMessages, {
       chatId: chatId as Id<"chats">,
     });
 
