@@ -20,6 +20,39 @@ import { appendResponseMessages } from "ai";
 import { tools } from "@/ai/tools";
 import { after } from "next/server";
 
+// Type interfaces for tool parts
+interface ToolCallPart {
+  type: "tool-call";
+  toolCallId: string;
+  toolName: string;
+  args: unknown;
+}
+
+interface ToolResultPart {
+  type: "tool-result";
+  toolCallId: string;
+  toolName: string;
+  result: unknown;
+}
+
+// Type guard for ToolCallPart
+function isToolCallPart(part: unknown): part is ToolCallPart {
+  return (
+    typeof part === "object" &&
+    part !== null &&
+    (part as ToolCallPart).type === "tool-call"
+  );
+}
+
+// Type guard for ToolResultPart
+function isToolResultPart(part: unknown): part is ToolResultPart {
+  return (
+    typeof part === "object" &&
+    part !== null &&
+    (part as ToolResultPart).type === "tool-result"
+  );
+}
+
 // Initialize Convex client for server-side usage
 function getConvexClient(): ConvexHttpClient {
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
@@ -44,10 +77,13 @@ const streamContext = createResumableStreamContext({
 
 export async function POST(req: Request) {
   // Skip during build time
-  if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_CONVEX_URL) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    !process.env.NEXT_PUBLIC_CONVEX_URL
+  ) {
     return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
   }
-  
+
   try {
     // Parse and validate request body
     let newUserMessage: Message | undefined;
@@ -102,9 +138,12 @@ export async function POST(req: Request) {
           chatId
         );
 
-        const previousMessages = await getConvexClient().query(api.messages.getMessages, {
-          chatId: chatId as Id<"chats">,
-        });
+        const previousMessages = await getConvexClient().query(
+          api.messages.getMessages,
+          {
+            chatId: chatId as Id<"chats">,
+          }
+        );
 
         console.log(
           "✅ [SERVER] Loaded",
@@ -113,13 +152,20 @@ export async function POST(req: Request) {
         );
 
         // Convert Convex messages to Message format with tool calls
-        const previousUIMessages: Message[] = previousMessages.map((msg: { _id: string; role: string; body: string; _creationTime: number }) => ({
-          id: msg._id, // Use Convex system ID
-          role: msg.role as "user" | "assistant",
-          content: msg.body,
-          // Note: Parts will be loaded separately for UI rendering
-          createdAt: new Date(msg._creationTime),
-        }));
+        const previousUIMessages: Message[] = previousMessages.map(
+          (msg: {
+            _id: string;
+            role: string;
+            body: string;
+            _creationTime: number;
+          }) => ({
+            id: msg._id, // Use Convex system ID
+            role: msg.role as "user" | "assistant",
+            content: msg.body,
+            // Note: Parts will be loaded separately for UI rendering
+            createdAt: new Date(msg._creationTime),
+          })
+        );
 
         // 🔥 Use appendClientMessage to combine database history with new user message
         const combinedUIMessages = appendClientMessage({
@@ -214,7 +260,10 @@ export async function POST(req: Request) {
             }),
             onFinish: async (finishResult) => {
               console.log("🏁 [SERVER] Stream finished, saving messages...");
-              console.log("🔍 [SERVER] finishResult:", JSON.stringify(finishResult, null, 2));
+              console.log(
+                "🔍 [SERVER] finishResult:",
+                JSON.stringify(finishResult, null, 2)
+              );
 
               try {
                 if (finishResult.response?.messages) {
@@ -236,39 +285,72 @@ export async function POST(req: Request) {
                     messages: uiMessages,
                     responseMessages: finishResult.response.messages,
                   });
-                  console.log("📥 [SERVER] updatedMessages:", JSON.stringify(updatedMessages, null, 2));
+                  console.log(
+                    "📥 [SERVER] updatedMessages:",
+                    JSON.stringify(updatedMessages, null, 2)
+                  );
 
                   // Only persist the newly-added messages
                   const newMessages = updatedMessages.slice(uiMessages.length);
-                  console.log("🆕 [SERVER] newMessages to persist:", JSON.stringify(newMessages, null, 2));
+                  console.log(
+                    "🆕 [SERVER] newMessages to persist:",
+                    JSON.stringify(newMessages, null, 2)
+                  );
 
                   for (const message of newMessages) {
-                    // Save user, assistant, and tool messages
-                    const messageRole = message.role as "user" | "assistant" | "tool";
+                    const messageRole = message.role as
+                      | "user"
+                      | "assistant"
+                      | "tool";
                     if (
                       messageRole === "user" ||
                       messageRole === "assistant" ||
                       messageRole === "tool"
                     ) {
-                      await getConvexClient().mutation(api.messages.saveRichMessage, {
-                        chatId: chatId as Id<"chats">,
-                        userId: authUserId,
-                        message: {
-                          id: message.id,
+                      // Prepare structured data for our new mutation
+                      let toolCallId, toolName, toolArgs, toolResult;
+
+                      // Parse the parts array to extract structured data
+                      if (message.parts && message.parts.length > 0) {
+                        for (const part of message.parts) {
+                          if (isToolCallPart(part)) {
+                            const toolCallPart = part as ToolCallPart;
+                            toolCallId = toolCallPart.toolCallId;
+                            toolName = toolCallPart.toolName;
+                            toolArgs = toolCallPart.args;
+                          } else if (isToolResultPart(part)) {
+                            const toolResultPart = part as ToolResultPart;
+                            toolCallId = toolResultPart.toolCallId;
+                            toolName = toolResultPart.toolName;
+                            toolResult = toolResultPart.result;
+                          }
+                        }
+                      }
+
+                      await getConvexClient().mutation(
+                        api.messages.saveRichMessage,
+                        {
+                          chatId: chatId as Id<"chats">,
+                          userId: authUserId,
                           role: messageRole,
                           content:
                             typeof message.content === "string"
                               ? message.content
                               : "",
-                          // Persist parts for ANY message that includes them (assistant/tool)
-                          parts: message.parts && message.parts.length > 0 ? message.parts : undefined,
-                        },
-                      });
+                          // Pass the extracted, structured data
+                          toolCallId,
+                          toolName,
+                          toolArgs,
+                          toolResult,
+                        }
+                      );
 
                       console.log("✅ [SERVER] Saved response message", {
                         role: messageRole,
-                        hasParts: !!(message.parts?.length),
-                        partsPreview: message.parts?.slice(0, 1),
+                        hasContent:
+                          typeof message.content === "string" &&
+                          message.content.length > 0,
+                        toolName: toolName,
                       });
                     }
                   }
@@ -282,32 +364,29 @@ export async function POST(req: Request) {
                   );
 
                   // 📦 Handle toolResults when response.messages is absent (tool call scenario)
-                  if (finishResult.toolResults && finishResult.toolResults.length > 0) {
+                  if (
+                    finishResult.toolResults &&
+                    finishResult.toolResults.length > 0
+                  ) {
                     console.log(
                       `🔧 [SERVER] Persisting ${finishResult.toolResults.length} toolResults`
                     );
 
                     // 1. Save each tool result as its own tool message
                     for (const toolResult of finishResult.toolResults) {
-                      const toolMessageId = generateId();
-
-                      await getConvexClient().mutation(api.messages.saveRichMessage, {
-                        chatId: chatId as Id<"chats">,
-                        userId: authUserId,
-                        message: {
-                          id: toolMessageId,
+                      await getConvexClient().mutation(
+                        api.messages.saveRichMessage,
+                        {
+                          chatId: chatId as Id<"chats">,
+                          userId: authUserId,
                           role: "tool",
                           content: "", // Tool messages store data in parts, not body
-                          parts: [
-                            {
-                              type: "tool-result",
-                              toolCallId: toolResult.toolCallId,
-                              toolName: toolResult.toolName,
-                              result: toolResult.result,
-                            },
-                          ],
-                        },
-                      });
+                          toolCallId: toolResult.toolCallId,
+                          toolName: toolResult.toolName,
+                          toolArgs: (toolResult as { args?: unknown }).args,
+                          toolResult: toolResult.result,
+                        }
+                      );
 
                       console.log("✅ [SERVER] Saved tool message", {
                         toolName: toolResult.toolName,
@@ -317,20 +396,23 @@ export async function POST(req: Request) {
 
                     // 2. Persist the assistant's synthesized text, if provided
                     if (finishResult.text && finishResult.text.length > 0) {
-                      const assistantMsgId = generateId();
-
-                      await getConvexClient().mutation(api.messages.saveRichMessage, {
-                        chatId: chatId as Id<"chats">,
-                        userId: authUserId,
-                        message: {
-                          id: assistantMsgId,
+                      await getConvexClient().mutation(
+                        api.messages.saveRichMessage,
+                        {
+                          chatId: chatId as Id<"chats">,
+                          userId: authUserId,
                           role: "assistant",
                           content: finishResult.text,
-                          parts: undefined,
-                        },
-                      });
+                          toolCallId: undefined,
+                          toolName: undefined,
+                          toolArgs: undefined,
+                          toolResult: undefined,
+                        }
+                      );
 
-                      console.log("✅ [SERVER] Saved assistant message after tool calls");
+                      console.log(
+                        "✅ [SERVER] Saved assistant message after tool calls"
+                      );
                     }
                   }
                 }
@@ -367,10 +449,13 @@ export async function POST(req: Request) {
  */
 export async function GET(request: Request) {
   // Skip during build time
-  if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_CONVEX_URL) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    !process.env.NEXT_PUBLIC_CONVEX_URL
+  ) {
     return new Response("Service unavailable", { status: 503 });
   }
-  
+
   try {
     const { searchParams } = new URL(request.url);
     const chatId = searchParams.get("chatId");
